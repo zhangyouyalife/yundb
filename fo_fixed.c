@@ -5,6 +5,131 @@
 #include <fcntl.h>
 #include <string.h>
 
+#define EC_IO       1
+
+#define RECORD_SZ   sizeof(struct instructor)
+
+#define BLOCK_SZ    256
+
+char block[256];
+
+void BlockWrite(int dbf, int bno, char *bd);
+void BlockRead(int dbf, int bno, char *bd);
+
+struct __attribute__((packed)) RecordPointer
+{
+    uint32_t  bno;
+    uint16_t  off;
+};
+
+struct __attribute__((packed)) FileHeader
+{
+    struct RecordPointer last;
+};
+
+#define DB_FILE_NAME    "fo_fixed.db"
+int file_fd;
+struct FileHeader file_header;
+
+void FileCreate()
+{
+    int dbf;
+    struct FileHeader *h;
+
+    if ((dbf = open(DB_FILE_NAME, O_CREAT|O_TRUNC|O_WRONLY, 0644)) < 0)
+    {
+        perror("Open fo_fixed.db failed");
+        exit(EC_IO);
+    }
+
+    h = (struct FileHeader *) block;
+    h->last.bno = 0;
+    h->last.off = sizeof(struct FileHeader);
+    
+    BlockWrite(dbf, 0, block);
+
+    if ( -1 == close(dbf))
+    {
+        perror("Close fo_fixed.db failed");
+        exit(1);
+    }
+}
+
+void FileOpen()
+{
+    struct FileHeader *p;
+
+    if ((file_fd = open(DB_FILE_NAME, O_RDWR)) < 0)
+    {
+        perror("Open fo_fixed.db failed");
+        exit(EC_IO);
+    }
+
+    BlockRead(file_fd, 0, block);
+
+    p = (struct FileHeader *) block;
+    file_header.last.bno = p->last.bno;
+    file_header.last.off = p->last.off;
+}
+
+void FileClose()
+{
+    struct FileHeader *p;
+
+    BlockRead(file_fd, 0, block);
+
+    p = (struct FileHeader *) block;
+    p->last.bno = file_header.last.bno;
+    p->last.off = file_header.last.off;
+
+    BlockWrite(file_fd, 0, block);
+
+    if ( -1 == close(file_fd))
+    {
+        perror("Close fo_fixed.db failed");
+        exit(1);
+    }
+}
+
+void BlockSeek(int dbf, int bno)
+{
+    if (-1 == lseek(dbf, bno * BLOCK_SZ, SEEK_SET))
+    {
+        perror("block write error");
+        exit(EC_IO);
+    }
+}
+
+void BlockWrite(int dbf, int bno, char *bd)
+{
+    BlockSeek(dbf, bno);
+
+    if (BLOCK_SZ != write(dbf, bd, BLOCK_SZ))
+    {
+        perror("block write error");
+        exit(EC_IO);
+    }
+}
+
+void BlockRead(int fd, int bno, char *bd)
+{
+    int r;
+    char *p;
+
+    BlockSeek(fd, bno);
+
+    p = bd;
+    while ((r = read(fd, p, bd + BLOCK_SZ - p)) > 0)
+        p += r;
+
+    if (p - bd != BLOCK_SZ)
+    {
+        perror("block read error");
+        exit(EC_IO);
+    }
+}
+
+
 struct __attribute__((packed)) instructor
 {
     char id[5];
@@ -66,6 +191,33 @@ void input_double(double *d)
     scanf("%lf", d);
 }
 
+void RecordAppend(struct instructor *ins)
+{
+    int off, bno;
+
+    off = file_header.last.off;
+    bno = file_header.last.bno;
+
+    if (off + RECORD_SZ > BLOCK_SZ)
+    {
+        // store in a new block
+        off = 0;
+        bno++;
+        bzero(block, BLOCK_SZ);
+    }
+    else
+    {
+        BlockRead(file_fd, bno, block);
+    }
+
+    memcpy(block + off, ins, RECORD_SZ);
+
+    BlockWrite(file_fd, bno, block);
+
+    file_header.last.bno = bno;
+    file_header.last.off = off + RECORD_SZ;
+}
+
 void append_record(int dbf)
 {
     struct instructor ins;
@@ -83,16 +235,10 @@ void append_record(int dbf)
     printf("Salary: ");
     input_double(&ins.salary);
 
-    rsize = sizeof(ins);
+    //rsize = sizeof(ins);
     //printf("%d", rsize);
     puts("Writing record...");
-    output_record(&ins);
-    lseek(dbf, 0, SEEK_END);
-    if (rsize != write(dbf, &ins, sizeof(ins)))
-    {
-        perror("Write error");
-        exit(1);
-    }
+    RecordAppend(&ins);
 }
 
 void output_record(struct instructor *ins)
@@ -109,26 +255,33 @@ void output_record(struct instructor *ins)
 
 void list_records(int dbf)
 {
-    int r, off;
-    struct instructor ins;
+    struct instructor *ins;
+    int bno, off;
 
-    lseek(dbf, 0, SEEK_SET);
+    bno = 0;    
+    off = sizeof(file_header);
 
-    off = 0;
-    while ((r = read(dbf, ((char *)&ins) + off, sizeof(ins) - off)) > 0)
+    while (bno <= file_header.last.bno)
     {
-        off += r;
-        if (off == sizeof(ins))
+        BlockRead(file_fd, bno, block);
+        while (bno < file_header.last.bno && off + RECORD_SZ <= BLOCK_SZ
+                || off + RECORD_SZ <= file_header.last.off)
         {
-            output_record(&ins);
+            ins = (struct instructor *) (block + off);
+            output_record(ins);
             puts("---");
-            off = 0;
+            off += RECORD_SZ;
         }
+
+        bno++;
+        off = 0;
     }
 }
 
-#define OP_APPEND   1
-#define OP_LIST     2
+
+#define OP_APPEND       1
+#define OP_LIST         2
+#define OP_CREATEFILE   3
 
 int main(int argc, char** argv)
 {
@@ -136,9 +289,12 @@ int main(int argc, char** argv)
     int ch;
     int op;
 
-    while ((ch = getopt(argc, argv, "al")) != -1)
+    while ((ch = getopt(argc, argv, "fal")) != -1)
     {
         switch (ch) {
+            case 'f':
+                op = OP_CREATEFILE;
+                break;
             case 'a':
                 op = OP_APPEND;
                 break;
@@ -155,12 +311,15 @@ int main(int argc, char** argv)
 
     printf("sizeof(double) = %lu\n", sizeof(double));
     printf("sizeof(record) = %lu\n", sizeof(struct instructor));
+    printf("BLOCK SIZE = %lu\n", BLOCK_SZ);
 
-    if ((dbf = open("fo_fixed.db", O_CREAT|O_RDWR, 0644)) < 0)
+    if (op == OP_CREATEFILE)
     {
-        perror("Open fo_fixed.db failed");
-        exit(1);
+        FileCreate();
+        exit(0);
     }
+
+    FileOpen();
 
     switch(op)
     {
@@ -175,11 +334,7 @@ int main(int argc, char** argv)
             exit(2);
     }
 
-    if ( -1 == close(dbf))
-    {
-        perror("Close fo_fixed.db failed");
-        exit(1);
-    }
+    FileClose();
 
     exit(0);
 }

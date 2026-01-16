@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <string.h>
 
-struct instructor
+struct __attribute__((packed)) instructor
 {
     char id[5];
     char name[20];
@@ -154,6 +154,7 @@ int main(int argc, char** argv)
     argv += optind;
 
     printf("sizeof(double) = %lu\n", sizeof(double));
+    printf("sizeof(record) = %lu\n", sizeof(struct instructor));
 
     if ((dbf = open("fo_fixed.db", O_CREAT|O_RDWR, 0644)) < 0)
     {

@@ -217,9 +217,9 @@ void delete_record(int bno, int rno)
     off = h->bh_rec[rno].br_off;
     sz = h->bh_rec[rno].size;
 
-    memmove(block + h->bh_rec[rno].br_off, 
+    memmove(block + h->bh_free_end + sz, 
             block + h->bh_free_end,
-            sz);
+            off - h->bh_free_end);
 
     for (i = 0; i < h->bh_nrec; i++)
     {
@@ -235,7 +235,52 @@ void delete_record(int bno, int rno)
     BlockWrite(file_fd, bno, block);
 }
 
-#define OP_APPEND       1
+void update_record(int bno, int rno)
+{
+    struct BlockHeader *h;
+    struct BlockRecord *r;
+    int off, sz, newoff, newsz;
+    int i;
+
+    struct instructor ins;
+    struct Record *p;
+
+    RecordInput(&ins);
+
+    //output_record(&ins);
+
+    newsz = RecordSize(&ins);
+
+    printf("record size = %d\n", sz);
+
+    BlockRead(file_fd, bno, block);
+
+    h = (struct BlockHeader*) block;
+    off = h->bh_rec[rno].br_off;
+    sz = h->bh_rec[rno].size;
+    newoff = off + sz - newsz;
+
+    memmove(block + h->bh_free_end + sz - newsz, 
+            block + h->bh_free_end,
+            off - h->bh_free_end);
+    p = (struct Record *) (block + newoff);
+    RecordFill(p, &ins);
+
+    for (i = 0; i < h->bh_nrec; i++)
+    {
+       r = &h->bh_rec[i]; 
+       if (r->size == -1)
+           continue;
+       if (r->br_off < off)
+           r->br_off += (sz - newsz);
+    }
+    h->bh_free_end += (sz - newsz);
+    h->bh_rec[rno].br_off = newoff;
+    h->bh_rec[rno].size = newsz;
+    
+    BlockWrite(file_fd, bno, block);
+}
+#define OP_UPDATE       1
 #define OP_LIST         2
 #define OP_CREATEFILE   3
 #define OP_INSERT       4
@@ -247,14 +292,14 @@ int main(int argc, char** argv)
     int op;
     int bno, rno;
 
-    while ((ch = getopt(argc, argv, "faidl")) != -1)
+    while ((ch = getopt(argc, argv, "fidul")) != -1)
     {
         switch (ch) {
             case 'f':
                 op = OP_CREATEFILE;
                 break;
-            case 'a':
-                op = OP_APPEND;
+            case 'u':
+                op = OP_UPDATE;
                 break;
             case 'i':
                 op = OP_INSERT;
@@ -298,6 +343,12 @@ int main(int argc, char** argv)
             rno = atoi(argv[1]);
             printf("Deleteing record at %d %d\n", bno, rno);
             delete_record(bno, rno);
+            break;
+        case OP_UPDATE:
+            bno = atoi(argv[0]);
+            rno = atoi(argv[1]);
+            printf("Updating record at %d %d\n", bno, rno);
+            update_record(bno, rno);
             break;
         default:
             puts("Invalid operation\n");

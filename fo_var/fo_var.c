@@ -82,29 +82,6 @@ void RecordInput(struct instructor *r)
     input_double(&r->salary);
 }
 
-void append_record(int dbf)
-{
-    struct instructor ins;
-    int rsize;
-
-    printf("Id: ");
-    input_str(ins.id, 5);
-
-    printf("Name: ");
-    input_str(ins.name, 20);
-
-    printf("Dept Name: ");
-    input_str(ins.dept_name, 20);
-
-    printf("Salary: ");
-    input_double(&ins.salary);
-
-    //rsize = sizeof(ins);
-    //printf("%d", rsize);
-    puts("Appending record...");
-    //RecordAppend(&ins);
-}
-
 void output_record(struct instructor *ins)
 {
     printf("Id: ");
@@ -190,7 +167,7 @@ void insert_record()
     BlockNew(block);
     printf("new record slot\n");
     p = BlockNewRecord(block, sz);
-    printf("found a slot %x\n", p);
+    //printf("found a slot %x\n", p);
     RecordFill(p, &ins);
     BlockWrite(file_fd, b, block);
     file_header->fh_blocks = b+1;
@@ -213,10 +190,49 @@ void list_records()
 
         for (i = 0; i < bh->bh_nrec; i++)
         {
-            p = block + bh->bh_rec[i].br_off;
+            puts("===");
+            if (bh->bh_rec[i].size == -1)
+            {
+                printf("Record at (%d, %d) deleted\n", b, i);
+                continue;
+            }
+            p = (struct Record *) (block + bh->bh_rec[i].br_off);
+            printf("Record at (%d, %d)\n", b, i);
+            puts("---");
             RecordOutput(p);
         }
     }
+}
+
+void delete_record(int bno, int rno)
+{
+    struct BlockHeader *h;
+    struct BlockRecord *r;
+    int off, sz;
+    int i;
+
+    BlockRead(file_fd, bno, block);
+
+    h = (struct BlockHeader*) block;
+    off = h->bh_rec[rno].br_off;
+    sz = h->bh_rec[rno].size;
+
+    memmove(block + h->bh_rec[rno].br_off, 
+            block + h->bh_free_end,
+            sz);
+
+    for (i = 0; i < h->bh_nrec; i++)
+    {
+       r = &h->bh_rec[i]; 
+       if (r->size == -1)
+           continue;
+       if (r->br_off < off)
+           r->br_off += sz;
+    }
+    h->bh_free_end += sz;
+    h->bh_rec[rno].size = -1;
+    
+    BlockWrite(file_fd, bno, block);
 }
 
 #define OP_APPEND       1
@@ -227,9 +243,9 @@ void list_records()
 
 int main(int argc, char** argv)
 {
-    int dbf;
     int ch;
     int op;
+    int bno, rno;
 
     while ((ch = getopt(argc, argv, "faidl")) != -1)
     {
@@ -259,7 +275,7 @@ int main(int argc, char** argv)
 
     printf("sizeof(double) = %lu\n", sizeof(double));
     printf("sizeof(record) = %lu\n", sizeof(struct instructor));
-    printf("BLOCK SIZE = %lu\n", BLOCK_SZ);
+    printf("BLOCK SIZE = %d\n", BLOCK_SZ);
 
     if (op == OP_CREATEFILE)
     {
@@ -271,9 +287,6 @@ int main(int argc, char** argv)
 
     switch(op)
     {
-        case OP_APPEND:
-            append_record(dbf);
-            break;
         case OP_LIST:
             list_records();
             break;
@@ -281,9 +294,10 @@ int main(int argc, char** argv)
             insert_record();
             break;
         case OP_DELETE:
-//            rp.bno = atoi(argv[0]);
- //           rp.off = atoi(argv[1]);
- //           printf("Deleteing record at %u %u\n", rp.bno, rp.off);
+            bno = atoi(argv[0]);
+            rno = atoi(argv[1]);
+            printf("Deleteing record at %d %d\n", bno, rno);
+            delete_record(bno, rno);
             break;
         default:
             puts("Invalid operation\n");

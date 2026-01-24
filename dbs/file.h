@@ -9,6 +9,13 @@ struct __attribute__((packed)) dbf_hdr
     uint32_t    blks;
 };
 
+/* variable length data */
+struct __attribute__((packed)) dbf_va
+{
+    int16_t off;
+    int16_t len;
+};
+
 
 /* Database file record slot */
 struct __attribute__((packed)) dbf_rec
@@ -32,6 +39,14 @@ struct dbf
     char            blk0[BLK_SZ];   
 };
 
+struct dbf_it
+{
+    struct dbf *f;
+    uint16_t b;
+    int16_t r;
+    char *blk;
+};
+
 void f_bs(struct dbf *f, int bn);
 void f_wb(struct dbf *f, int bn, char bd[BLK_SZ]);
 void f_rb(struct dbf *f, int bn, char bd[BLK_SZ]);
@@ -40,6 +55,13 @@ void f_open(struct dbf *f, char filename[]);
 void f_close(struct dbf *f);
 void f_binit(char bd[BLK_SZ]);
 char *f_nr(char *block, int size);
+
+/* file iterator */
+void f_it(struct dbf *f, struct dbf_it *it);
+char *f_itnext(struct dbf_it *it);
+void f_itfree(struct dbf_it *it);
+
+void f_strcpy(char *s, struct dbf_va *v, char *r);
 
 #endif
 

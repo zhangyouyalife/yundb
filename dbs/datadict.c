@@ -1,4 +1,5 @@
 #include "datadict.h"
+#include "file.h"
 
 /* attribte record */
 void dd_attr(char *rname, char *aname, int domain, int pos, int len, char *rec)
@@ -32,5 +33,44 @@ void dd_rel(char *name, int nattr, int forg, char *rec)
     r->nattr = nattr;
     r->forg = forg;
     strncpy(rec + r->name.off, name, strlen(name)); 
+}
+
+
+void dd_reldescfrom(struct dd_reldesc *m, struct dd_rel *d)
+{
+    f_strcpy(m->name, &d->name, (char *)d);
+    m->nattr = d->nattr;
+}
+
+int dd_reldesc_get(struct dd_reldesc *rd, char *name)
+{
+    struct dbf_it it;
+    char *r;
+    struct dd_rel *rel;
+    static char nb[NAME_MAXSZ];
+    int found;
+
+    f_it(&relation, &it);
+
+    found = 0;
+    while ( (r = f_itnext(&it)) != 0 ) 
+    {
+        rel = (struct dd_rel *) r;
+        f_strcpy(nb, &rel->name, r);
+        if (strcmp(nb, name) == 0)
+        {
+            dd_reldescfrom(rd, rel);
+            found = 1;
+            break;
+        }
+    }
+    
+    f_itfree(&it);
+
+    return found;
+}
+
+void dd_reldesc_free(struct dd_reldesc *d)
+{
 }
 

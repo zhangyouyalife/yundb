@@ -127,3 +127,84 @@ char *f_nr(char *block, int size)
     return (block + bh->free);
 }
 
+void f_it(struct dbf *f, struct dbf_it *it)
+{
+    it->f = f;
+    it->blk = 0;
+}
+
+char * f_itnext_inblk(struct dbf_it *it)
+{
+    struct dbf_rec *r;
+    struct dbf_blkhdr *h;
+
+    h = (struct dbf_blkhdr *) it->blk;
+
+    for ( ; it->r < h->nrec; it->r++)
+    {
+        r = &h->rec[it->r];
+        if (r->sz != -1) {
+            return it->blk + h->rec[it->r].off;
+        }
+    } 
+
+    return 0;
+}
+
+char *f_itnext(struct dbf_it *it)
+{
+    struct dbf_blkhdr *h;
+    char *r;
+
+    if (it->blk == 0)
+    {
+        if (it->f->hdr->blks <= 1)
+            /* no data block */
+            return 0;
+
+        /* init */
+        it->blk = malloc(BLK_SZ);
+        if (it->blk == 0)
+        {
+            perror("f_itnext malloc failed");
+            exit(EC_M);
+        }
+
+        it->b = 1;
+        it->r = -1;
+        f_rb(it->f, it->b, it->blk); 
+    }
+
+    h = (struct dbf_blkhdr *) it->blk;
+    it->r++;
+
+    /* return record in curent block */
+    r = f_itnext_inblk(it);
+    if (r != 0)
+        return r;
+
+    /* read next blocks */
+    while (it->b + 1 < it->f->hdr->blks)
+    {
+        f_rb(it->f, ++(it->b), it->blk);
+        it->r = 0;
+        r = f_itnext_inblk(it);
+        if (r != 0)
+            return r;
+    }
+
+    /* no more record */
+    return 0;
+}
+
+void f_itfree(struct dbf_it *it)
+{
+    if (it->blk)
+        free(it->blk);
+}
+
+void f_strcpy(char *s, struct dbf_va *v, char *r)
+{
+    strncpy(s, r + v->off, v->len);
+    s[v->len] = 0;
+}

@@ -7,18 +7,17 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "file.h"
 
-struct __attribute__((packed)) dd_va
-{
-    int16_t off;
-    int16_t len;
-};
+struct dbf  relation;
+
+struct dbf  attribute;
 
 struct __attribute__((packed)) dd_rel
 {
-    struct dd_va    name;
+    struct dbf_va    name;
     uint16_t        nattr;
-    uint8_t        forg;
+    uint8_t         forg;
     char            va_start[0];
 };
 
@@ -29,8 +28,8 @@ struct __attribute__((packed)) dd_rel
 
 struct __attribute__((packed)) dd_attr
 {
-    struct dd_va    rel;
-    struct dd_va    attr;
+    struct dbf_va    rel;
+    struct dbf_va    attr;
     uint8_t         domain;
     uint16_t        pos;
     uint16_t        len;
@@ -51,6 +50,27 @@ void dd_rel(char *name, int nattr, int forg, char *rec);
 
 void dd_attr(char *rname, char *aname, int domain, 
         int pos, int len, char *rec);
+
+
+#define NAME_MAXSZ  128
+
+struct dd_attrdesc
+{
+    char            name[NAME_MAXSZ];
+    uint8_t         domain;
+    uint16_t        pos;
+    uint16_t        len;
+};
+
+struct dd_reldesc
+{
+    char                name[NAME_MAXSZ];
+    uint16_t            nattr;
+    struct dd_attrdesc  *attrs;
+};
+
+int dd_reldesc_get(struct dd_reldesc *rd, char *name);
+void dd_reldesc_free(struct dd_reldesc *d);
 
 #endif
 

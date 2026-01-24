@@ -185,35 +185,16 @@ void list_records(char *rname)
     struct dd_rel *p;
     struct dbf_blkhdr *bh;
     char s[256];
+    struct dd_reldesc rd;
 
     printf("To find relation [%s]\n", rname);
-
-    for (b = 1; b < relation.hdr->blks; b++)
+    if (dd_reldesc_get(&rd, rname))
     {
-        /* find relation */
-        f_rb(&relation, b, block);
-        bh = (struct dbf_blkhdr*) block ;
-
-        for (i = 0; i < bh->nrec; i++)
-        {
-            printf(".");
-            if (bh->rec[i].sz == -1)
-            {
-                continue;
-            }
-            p = (struct dd_rel *) (block + bh->rec[i].off);
-            memset(s, 0, 256);
-            /*printf("p name off %d\n", p->name.off);*/
-            strncpy(s, (char *)p + p->name.off, p->name.len);
-            /*printf("found a relation: %s\n", s);*/
-            if (strcmp(s, rname) == 0)
-            {
-                printf("\nRelation found\n");
-                return;
-            }
-        }
+        printf("Found [%s]\n", rd.name);
+        dd_reldesc_free(&rd);
     }
 
+    
     puts("Relation not found");
 }
 

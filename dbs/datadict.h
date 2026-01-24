@@ -5,6 +5,9 @@
 #define FO_SEQ  2
 #define FO_HASH 3
 
+#include <stdint.h>
+#include <string.h>
+
 struct __attribute__((packed)) dd_va
 {
     int16_t off;
@@ -43,6 +46,11 @@ struct __attribute__((packed)) dd_attr
 #define DOMAIN_INTEGER  1
 #define DOMAIN_FLOAT    2
 #define DOMAIN_VARCHAR  3
+
+void dd_rel(char *name, int nattr, int forg, char *rec);
+
+void dd_attr(char *rname, char *aname, int domain, 
+        int pos, int len, char *rec);
 
 #endif
 

@@ -43,6 +43,7 @@ void dd_reldescfrom(struct dd_reldesc *m, struct dd_rel *d)
 {
     f_strcpy(m->name, &d->name, (char *)d);
     m->nattr = d->nattr;
+    m->forg = d->forg;
 }
 
 void dd_attrdescfrom(struct dd_attrdesc *m, struct dd_attr *d)
@@ -70,7 +71,8 @@ int dd_attrdesc_get(struct dd_attrdesc ads[], char *rname)
         f_strcpy(nm, &attr->rel, r);
         if (strcmp(nm, rname) == 0)
         {
-            dd_attrdescfrom(&ads[found++], attr);
+            found++;
+            dd_attrdescfrom(&ads[attr->pos], attr);
         }
     }
     
@@ -106,7 +108,7 @@ int dd_reldesc_get(struct dd_reldesc *rd, char *name)
             else
             {
                 rd->attrs = malloc(rd->nattr * sizeof(struct dd_attrdesc));
-                printf("has %d attrs\n", rd->nattr);
+                /*printf("has %d attrs\n", rd->nattr);*/
 
                 dd_attrdesc_get(rd->attrs, name);
             }

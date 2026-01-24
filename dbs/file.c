@@ -105,7 +105,39 @@ void f_binit(char bd[BLK_SZ])
     h->free = BLK_SZ;
 }
 
-char *f_nr(char *block, int size)
+void f_nr(struct dbf *f, char *r, int size)
+{
+    char *b, *p;
+    int i;
+
+    if ( (b = malloc(BLK_SZ)) == 0 )
+    {
+        perror("f_nr malloc failed");
+        exit(EC_M);
+    }
+
+    for (i = 1; i < f->hdr->blks; i++) {
+        f_rb(f, i, b);
+        p = b_nr(b, size);
+        if (p != 0)
+        {
+            memcpy(p, r, size);
+            f_wb(f, i, b);
+            return;
+        }
+    }
+
+    /* alloc new block */
+    f_binit(b);
+    p = b_nr(b, size);
+    memcpy(p, r, size);
+    f_wb(f, i, b);
+    f->hdr->blks++;
+
+    free(b);
+}
+
+char *b_nr(char *block, int size)
 {
     int free;
     struct dbf_blkhdr *bh;

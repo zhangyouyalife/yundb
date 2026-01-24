@@ -8,6 +8,10 @@
 #include "file.h"
 #include "datadict.h"
 
+void db_crt_relation();
+
+void db_crt_attribute();
+
 void db_init(char *path)
 {
     static char dblk[BLK_SZ];
@@ -20,46 +24,213 @@ void db_init(char *path)
         exit(EC_IO);
     }
 
-    /* init relation.rel */
-    strcpy(tpath, path);
-    strcat(tpath, "relation.rel");
+    /* create relation.rel */
+    sprintf(tpath, "%s%s.rel", path, REL_NAME);
     f_crt(&relation, tpath);
-
     f_open(&relation, tpath);
 
-    f_binit(dblk);
-
-    r = f_nr(dblk, DD_REL_RSZ(REL_NAME));
-    dd_rel(REL_NAME, 3, FO_HEAP, r); 
-
-    f_wb(&relation, 1, dblk);
-    relation.hdr->blks++;
-    f_close(&relation);
-
-    /* init attribute */
-    strcpy(tpath, path);
-    strcat(tpath, ATTR_NAME);
-    strcat(tpath, ".rel");
+    /* create attribute */
+    sprintf(tpath, "%s%s.rel", path, ATTR_NAME);
     f_crt(&attribute, tpath);
-
     f_open(&attribute, tpath);
 
-    f_binit(dblk);
+    db_crt_relation();
 
+    db_crt_attribute();
+
+    f_close(&attribute);
+    f_close(&relation);
+
+
+}
+
+void db_crt_attribute()
+{
+    char *r;
+
+    /* relation record */
+    if ( (r = malloc(DD_REL_RSZ(ATTR_NAME))) == 0)
+    {
+        perror("db_crt_attribute malloc failed");
+        exit(EC_M);
+    }
+    dd_rel(ATTR_NAME, 5, FO_HEAP, r); 
+    f_nr(&relation, r, DD_REL_RSZ(ATTR_NAME));
+    free(r);
+
+    /* attribute records */
+    /* attr: attribute.rel */
+    if ( (r = malloc(DD_ATTR_RSZ(ATTR_NAME, "rel"))) == 0)
+    {
+        perror("db_crt_attribute malloc failed");
+        exit(EC_M);
+    }
+    dd_attr(ATTR_NAME, "rel", DOMAIN_VARCHAR, 0, 256, r);
+    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "rel"));
+    free(r);
+    /* attr: attribute.name */
+    if ( (r = malloc(DD_ATTR_RSZ(ATTR_NAME, "name"))) == 0)
+    {
+        perror("db_crt_attribute malloc failed");
+        exit(EC_M);
+    }
+    dd_attr(ATTR_NAME, "name", DOMAIN_VARCHAR, 1, 256, r);
+    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "name"));
+    free(r);
+
+    /* attr: relation.domain */
+    if ( (r = malloc(DD_ATTR_RSZ(ATTR_NAME, "domain"))) == 0)
+    {
+        perror("db_crt_attribute malloc failed");
+        exit(EC_M);
+    }
+    dd_attr(ATTR_NAME, "domain", DOMAIN_INTEGER, 2, 1, r);
+    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "domain"));
+    free(r);
+
+    /* attr: relation.pos */
+    if ( (r = malloc(DD_ATTR_RSZ(ATTR_NAME, "pos"))) == 0)
+    {
+        perror("db_crt_attribute malloc failed");
+        exit(EC_M);
+    }
+    dd_attr(ATTR_NAME, "pos", DOMAIN_INTEGER, 3, 2, r);
+    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "pos"));
+    free(r);
+
+    /* attr: relation.pos */
+    if ( (r = malloc(DD_ATTR_RSZ(ATTR_NAME, "len"))) == 0)
+    {
+        perror("db_crt_attribute malloc failed");
+        exit(EC_M);
+    }
+    dd_attr(ATTR_NAME, "len", DOMAIN_INTEGER, 4, 2, r);
+    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "len"));
+    free(r);
+}
+
+void db_crt_relation()
+{
+    char *r;
+
+    /* relation record */
+    if ( (r = malloc(DD_REL_RSZ(REL_NAME))) == 0)
+    {
+        perror("db_crt_relation malloc failed");
+        exit(EC_M);
+    }
+    dd_rel(REL_NAME, 3, FO_HEAP, r); 
+    f_nr(&relation, r, DD_REL_RSZ(REL_NAME));
+    free(r);
+
+    /* attribute records */
     /* attr: relation.name */
-    r = f_nr(dblk, DD_ATTR_RSZ(REL_NAME, "name"));
+    if ( (r = malloc(DD_ATTR_RSZ(REL_NAME, "name"))) == 0)
+    {
+        perror("db_crt_relation malloc failed");
+        exit(EC_M);
+    }
     dd_attr(REL_NAME, "name", DOMAIN_VARCHAR, 0, 256, r);
+    f_nr(&attribute, r, DD_ATTR_RSZ(REL_NAME, "name"));
+    free(r);
 
     /* attr: relation.nattr */
-    r = f_nr(dblk, DD_ATTR_RSZ(REL_NAME, "nattr"));
+    if ( (r = malloc(DD_ATTR_RSZ(REL_NAME, "nattr"))) == 0)
+    {
+        perror("db_crt_relation malloc failed");
+        exit(EC_M);
+    }
     dd_attr(REL_NAME, "nattr", DOMAIN_INTEGER, 1, 2, r);
+    f_nr(&attribute, r, DD_ATTR_RSZ(REL_NAME, "nattr"));
+    free(r);
 
     /* attr: relation.forg */
-    r = f_nr(dblk, DD_ATTR_RSZ(REL_NAME, "forg"));
+    if ( (r = malloc(DD_ATTR_RSZ(REL_NAME, "forg"))) == 0)
+    {
+        perror("db_crt_relation malloc failed");
+        exit(EC_M);
+    }
     dd_attr(REL_NAME, "forg", DOMAIN_INTEGER, 2, 1, r);
+    f_nr(&attribute, r, DD_ATTR_RSZ(REL_NAME, "forg"));
+    free(r);
+}
 
-    f_wb(&attribute, 1, dblk);
-    attribute.hdr->blks++;
-    f_close(&attribute);
+int64_t db_integer(char *s, int l)
+{
+    switch (l)
+    {
+        case 1:
+            return *s;
+        case 2:
+            return *((int16_t *)s);
+        case 4:
+            return *((int32_t *)s);
+        case 8:
+            return *((int64_t *)s);
+        default:
+            fprintf(stderr, "invalid integer");
+            exit(EC_DB);
+    }
+}
+
+double db_float(char *s, int l)
+{
+    switch (l)
+    {
+        case 4:
+            return *((float *)s);
+        case 8:
+            return *((double *)s);
+        default:
+            fprintf(stderr, "invalid float");
+            exit(EC_DB);
+    }
+}
+
+void db_varchar(char *s, char *f, int l)
+{
+    strncpy(s, f, l);
+    s[l] = 0;
+}
+
+void db_val(char *val, int pos, char *r, struct dd_reldesc *d)
+{
+    int off, len; 
+    int i;
+    struct dd_attrdesc *a;
+    struct dbf_va *va;
+
+
+    a = d->attrs;
+    for (i = 0, off = 0; i < pos; i++, a++) {
+        switch (a->domain)
+        {
+            case DOMAIN_INTEGER:
+            case DOMAIN_FLOAT:
+                off += a->len;
+                break;
+           case DOMAIN_VARCHAR:
+                off += 4;
+        }
+    }
+
+    a = d->attrs + pos;
+    switch (a->domain)
+    {
+        case DOMAIN_VARCHAR:
+            va = (struct dbf_va *) (r + off);
+            db_varchar(val, r + va->off, va->len);  
+            break;
+        case DOMAIN_INTEGER:
+            sprintf(val, 
+                    "%lld",
+                    db_integer(r + off, a->len));
+            break;
+        case DOMAIN_FLOAT:
+            sprintf(val,
+                    "%lf",
+                    db_float(r + off, a->len));
+            break;
+    }
 }
 

@@ -67,6 +67,7 @@ struct dd_reldesc
     char                name[NAME_MAXSZ];
     uint16_t            nattr;
     struct dd_attrdesc  *attrs;
+    uint8_t             forg;
 };
 
 int dd_reldesc_get(struct dd_reldesc *rd, char *name);

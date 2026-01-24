@@ -158,7 +158,7 @@ void insert_record()
     for (b = 1; b < relation.hdr->blks; b++)
     {
         f_rb(&relation, b, block);
-        p = (struct Record *) f_nr(block, sz);
+        p = (struct Record *) b_nr(block, sz);
         if (p != NULL)
         {
             RecordFill(p, &ins);
@@ -171,7 +171,7 @@ void insert_record()
     printf("new block\n");
     f_binit(block);
     printf("new record slot\n");
-    p = (struct Record *) f_nr(block, sz);
+    p = (struct Record *) b_nr(block, sz);
     //printf("found a slot %x\n", p);
     RecordFill(p, &ins);
     f_wb(&relation, b, block);
@@ -187,16 +187,41 @@ void list_records(char *rname)
     struct dbf_blkhdr *bh;
     char s[256];
     struct dd_reldesc rd;
+    struct dbf f;
+    struct dbf_it it;
+    char *r;
+    char val[256];
 
-    printf("To find relation [%s]\n", rname);
+    /* printf("To find relation [%s]\n", rname); */
     if (dd_reldesc_get(&rd, rname))
     {
-        printf("Found [%s]\n", rd.name);
-        printf("It has %d atrributes\n", rd.nattr);
+        /* metadata found */
+        /* printf("Found [%s]\n", rd.name); */
+        /*printf("It has %d atrributes\n", rd.nattr);
         for (i = 0; i < rd.nattr; i++)
         {
             printf("%s\n", rd.attrs[i].name);
+        } */
+        /* show data */
+        puts("===");
+        puts(rname);
+        puts("===");
+        sprintf(s, "%s%s.rel", DB_PATH, rname);
+        f_open(&f, s);
+        f_it(&f, &it);
+        while ( (r = f_itnext(&it)) != 0)
+        {
+            for (i = 0; i < rd.nattr; i++)
+            {
+                db_val(val, i, r, &rd);
+                printf("%s: %s\n", rd.attrs[i].name, val);
+            }
+            puts("---");
         }
+        f_itfree(&it);
+        f_close(&f);
+
+
         dd_reldesc_free(&rd);
     }
     else
@@ -323,11 +348,11 @@ int main(int argc, char** argv)
     }
     argc -= optind;
     argv += optind;
-
+/*
     printf("sizeof(double) = %lu\n", sizeof(double));
     printf("sizeof(record) = %lu\n", sizeof(struct instructor));
     printf("BLOCK SIZE = %d\n", BLK_SZ);
-
+*/
     if (op == OP_CREATEFILE)
     {
         //f_crt(&relation, DB_FILE_NAME);

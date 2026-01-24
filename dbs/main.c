@@ -14,6 +14,7 @@
 
 #define DB_PATH         "./database/"
 #define DB_REL_PATH     "./database/relation.rel"
+#define DB_ATTR_PATH     "./database/attribute.rel"
 
 struct instructor
 {
@@ -191,11 +192,17 @@ void list_records(char *rname)
     if (dd_reldesc_get(&rd, rname))
     {
         printf("Found [%s]\n", rd.name);
+        printf("It has %d atrributes\n", rd.nattr);
+        for (i = 0; i < rd.nattr; i++)
+        {
+            printf("%s\n", rd.attrs[i].name);
+        }
         dd_reldesc_free(&rd);
     }
-
-    
-    puts("Relation not found");
+    else
+    {
+        puts("Relation not found");
+    }
 }
 
 void delete_record(int bno, int rno)
@@ -329,6 +336,7 @@ int main(int argc, char** argv)
     }
 
     f_open(&relation, DB_REL_PATH);
+    f_open(&attribute, DB_ATTR_PATH);
 
     switch(op)
     {
@@ -355,6 +363,7 @@ int main(int argc, char** argv)
             exit(2);
     }
 
+    f_close(&attribute);
     f_close(&relation);
 
     exit(0);

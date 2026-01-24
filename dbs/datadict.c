@@ -1,3 +1,6 @@
+#include <stdlib.h>
+#include <stdio.h>
+
 #include "datadict.h"
 #include "file.h"
 
@@ -42,6 +45,40 @@ void dd_reldescfrom(struct dd_reldesc *m, struct dd_rel *d)
     m->nattr = d->nattr;
 }
 
+void dd_attrdescfrom(struct dd_attrdesc *m, struct dd_attr *d)
+{
+    f_strcpy(m->name, &d->attr, (char *)d); 
+    m->domain = d->domain;
+    m->pos = d->pos;
+    m->len = d->len;
+}
+
+int dd_attrdesc_get(struct dd_attrdesc ads[], char *rname)
+{
+    struct dbf_it it;
+    char *r;
+    struct dd_attr *attr;
+    static char nm[NAME_MAXSZ];
+    int found;
+
+    f_it(&attribute, &it);
+
+    found = 0;
+    while ( (r = f_itnext(&it)) != 0 ) 
+    {
+        attr = (struct dd_attr *) r;
+        f_strcpy(nm, &attr->rel, r);
+        if (strcmp(nm, rname) == 0)
+        {
+            dd_attrdescfrom(&ads[found++], attr);
+        }
+    }
+    
+    f_itfree(&it);
+
+    return found;
+}
+
 int dd_reldesc_get(struct dd_reldesc *rd, char *name)
 {
     struct dbf_it it;
@@ -61,6 +98,18 @@ int dd_reldesc_get(struct dd_reldesc *rd, char *name)
         {
             dd_reldescfrom(rd, rel);
             found = 1;
+
+            if (rd->nattr == 0)
+            {
+                rd->attrs = 0;
+            }
+            else
+            {
+                rd->attrs = malloc(rd->nattr * sizeof(struct dd_attrdesc));
+                printf("has %d attrs\n", rd->nattr);
+
+                dd_attrdesc_get(rd->attrs, name);
+            }
             break;
         }
     }
@@ -72,5 +121,9 @@ int dd_reldesc_get(struct dd_reldesc *rd, char *name)
 
 void dd_reldesc_free(struct dd_reldesc *d)
 {
+    if (d->attrs != 0)
+    {
+        free(d->attrs);
+    }
 }
 

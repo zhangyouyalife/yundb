@@ -174,7 +174,6 @@ char *f_itnext(struct dbf_it *it)
         it->r = -1;
         f_rb(it->f, it->b, it->blk); 
     }
-
     h = (struct dbf_blkhdr *) it->blk;
     it->r++;
 

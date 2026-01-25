@@ -153,6 +153,35 @@ char *b_nr(char *block, int size)
     return (block + bh->free);
 }
 
+void f_dr(struct dbf *f, struct dbf_it *it)
+{
+    struct dbf_blkhdr *h;
+    struct dbf_rec *r;
+    int off, sz;
+    int i;
+
+    h = (struct dbf_blkhdr*) it->blk;
+    off = h->rec[it->r].off;
+    sz = h->rec[it->r].sz;
+
+    memmove(it->blk + h->free + sz, 
+            it->blk + h->free,
+            off - h->free);
+
+    for (i = 0; i < h->nrec; i++)
+    {
+       r = &h->rec[i]; 
+       if (r->sz == -1)
+           continue;
+       if (r->off < off)
+           r->off += sz;
+    }
+    h->free += sz;
+    h->rec[it->r].sz = -1;
+    
+    f_wb(it->f, it->b, it->blk);
+}
+
 void f_it(struct dbf *f, struct dbf_it *it)
 {
     it->f = f;

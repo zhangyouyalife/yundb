@@ -196,7 +196,34 @@ void db_val(char *val, int pos, char *r, struct dd_reldesc *d)
     int i;
     struct dd_attrdesc *a;
     struct dbf_va *va;
+    union db_value v;
 
+    db_attr_val(&v, pos, r, d, val);
+
+    a = d->attrs + pos;
+    switch (a->domain)
+    {
+        case DOMAIN_VARCHAR:
+            break;
+        case DOMAIN_INTEGER:
+            sprintf(val, 
+                    "%lld",
+                    v.i_val);
+            break;
+        case DOMAIN_FLOAT:
+            sprintf(val,
+                    "%lf",
+                    v.f_val);
+            break;
+    }
+}
+
+
+int db_attr_off(int pos, struct dd_reldesc *d)
+{
+    int off; 
+    int i;
+    struct dd_attrdesc *a;
 
     a = d->attrs;
     for (i = 0, off = 0; i < pos; i++, a++) {
@@ -211,22 +238,32 @@ void db_val(char *val, int pos, char *r, struct dd_reldesc *d)
         }
     }
 
+    return off;
+}
+
+void db_attr_val(union db_value *v, int pos, 
+        char *r, struct dd_reldesc *d,
+        char *buf)
+{
+    int off; 
+    struct dd_attrdesc *a;
+    struct dbf_va *va;
+
+    off = db_attr_off(pos, d);
+
     a = d->attrs + pos;
     switch (a->domain)
     {
         case DOMAIN_VARCHAR:
             va = (struct dbf_va *) (r + off);
-            db_varchar(val, r + va->off, va->len);  
+            db_varchar(buf, r + va->off, va->len);  
+            v->v_val = buf;
             break;
         case DOMAIN_INTEGER:
-            sprintf(val, 
-                    "%lld",
-                    db_integer(r + off, a->len));
+            v->i_val = db_integer(r + off, a->len);
             break;
         case DOMAIN_FLOAT:
-            sprintf(val,
-                    "%lf",
-                    db_float(r + off, a->len));
+            v->f_val = db_float(r + off, a->len);
             break;
     }
 }
@@ -406,6 +443,84 @@ int dml_insert(char *rel, union db_value *values)
 
     f_nr(&f, r, size);
     free(r);
+
+    f_close(&f);
+
+    dd_reldesc_free(&d);
+
+    return 0;
+}
+
+int dml_delete(char *rel, struct db_where *w)
+{
+    struct dd_reldesc d;
+    struct dd_attrdesc *a, *at;
+    union db_value v;
+    struct dbf_it it;
+    struct dbf f;
+    int size, vaoff, len, i;
+    char *r, *p;
+    char fn[256], *buf;
+
+    if (!dd_reldesc_get(&d, rel))
+    {
+        return E_REL_NOT_FOUND;
+    }
+
+    at = 0;
+    for (i = 0; i < d.nattr; i++)
+    {
+        a = &d.attrs[i];
+        if (strcmp(a->name, w->attr) == 0)
+        {
+            at = a;
+            break;
+        }
+    }
+    if (at == 0)
+    {
+        return E_ATTR_NOT_FOUND;
+    }
+
+    sprintf(fn, "%s%s.rel", db_path, rel);
+    f_open(&f, fn);
+
+    f_it(&f, &it);
+    while ( (r = f_itnext(&it)) != 0)
+    {
+        switch (at->domain)
+        {
+            case DOMAIN_INTEGER:
+                db_attr_val(&v, at->pos, r, &d, buf);
+                if (w->v.i_val == v.i_val) 
+                {
+                    f_dr(&f, &it);
+                }
+                break;
+            case DOMAIN_FLOAT:
+                db_attr_val(&v, at->pos, r, &d, buf);
+                if (w->v.f_val == v.f_val) 
+                {
+                    f_dr(&f, &it);
+                }
+                break;
+            case DOMAIN_VARCHAR:
+                if ( (buf = malloc(at->len + 1)) == 0)
+                {
+                    perror("dml_delete malloc buf");
+                    exit(EC_M);
+                }
+                db_attr_val(&v, at->pos, r, &d, buf);
+                if (strcmp(w->v.v_val, v.v_val) == 0) 
+                {
+                    f_dr(&f, &it);
+                }
+                free(buf);
+                break;
+        }
+    }
+
+    f_itfree(&it);
 
     f_close(&f);
 

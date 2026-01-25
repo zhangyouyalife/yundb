@@ -225,35 +225,20 @@ void list_records(char *rname)
     }
 }
 
-void delete_record(int bno, int rno)
+void delete_record(char *id)
 {
     struct dbf_blkhdr *h;
     struct dbf_rec *r;
     int off, sz;
     int i;
-
-    f_rb(&relation, bno, block);
-
-    h = (struct dbf_blkhdr*) block;
-    off = h->rec[rno].off;
-    sz = h->rec[rno].sz;
-
-    memmove(block + h->free + sz, 
-            block + h->free,
-            off - h->free);
-
-    for (i = 0; i < h->nrec; i++)
-    {
-       r = &h->rec[i]; 
-       if (r->sz == -1)
-           continue;
-       if (r->off < off)
-           r->off += sz;
-    }
-    h->free += sz;
-    h->rec[rno].sz = -1;
+    struct db_where w;
     
-    f_wb(&relation, bno, block);
+    w.attr = "id";
+    w.v.v_val = id;
+
+    dml_delete("instructor", &w);
+
+    puts("OK");
 }
 
 void update_record(int bno, int rno)
@@ -373,10 +358,7 @@ int main(int argc, char** argv)
             insert_record();
             break;
         case OP_DELETE:
-            bno = atoi(argv[0]);
-            rno = atoi(argv[1]);
-            printf("Deleteing record at %d %d\n", bno, rno);
-            delete_record(bno, rno);
+            delete_record(argv[0]);
             break;
         case OP_UPDATE:
             bno = atoi(argv[0]);
@@ -397,5 +379,4 @@ int main(int argc, char** argv)
 
     exit(0);
 }
-
 

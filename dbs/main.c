@@ -157,7 +157,7 @@ void insert_record()
 {
     int b, sz;
     struct instructor ins;
-    struct Record *p;
+    union db_value v[4];
 
     RecordInput(&ins);
 
@@ -165,30 +165,12 @@ void insert_record()
 
     puts("Inserting record ...");
 
-    sz = RecordSize(&ins);
-
-    printf("record size = %d\n", sz);
-    for (b = 1; b < relation.hdr->blks; b++)
-    {
-        f_rb(&relation, b, block);
-        p = (struct Record *) b_nr(block, sz);
-        if (p != NULL)
-        {
-            RecordFill(p, &ins);
-            f_wb(&relation, b, block);
-            return;
-        }
-    }
-
-    // no available block
-    printf("new block\n");
-    f_binit(block);
-    printf("new record slot\n");
-    p = (struct Record *) b_nr(block, sz);
-    //printf("found a slot %x\n", p);
-    RecordFill(p, &ins);
-    f_wb(&relation, b, block);
-    relation.hdr->blks = b+1;
+    v[0].v_val = ins.id;
+    v[1].v_val = ins.name;
+    v[2].v_val = ins.dept_name;
+    v[3].f_val = ins.salary;
+    dml_insert("instructor", v);
+    puts("OK");
 }
 
 void list_records(char *rname)

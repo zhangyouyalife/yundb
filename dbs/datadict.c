@@ -123,9 +123,6 @@ int dd_reldesc_get(struct dd_reldesc *rd, char *name)
 
 void dd_reldesc_free(struct dd_reldesc *d)
 {
-    if (d->attrs != 0)
-    {
-        free(d->attrs);
-    }
+    free(d->attrs);
 }
 

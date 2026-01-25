@@ -36,7 +36,14 @@ void ddl_create_free(struct ddl_create *c);
 
 void ddl_drop(char *name);
 
-void dml_insert(char *rname, char value[]);
+union db_value {
+    int64_t i_val;
+    double f_val;
+    char *v_val;
+};
 
+int dml_insert(char *rel, union db_value *values);
+
+#define E_REL_NOT_FOUND 1
 
 #endif

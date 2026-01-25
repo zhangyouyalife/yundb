@@ -330,9 +330,87 @@ void ddl_create_go(struct ddl_create *c)
 
 void ddl_drop(char *name)
 {
+    
 }
 
-void dml_insert(char *rname, char value[])
+int dml_insert(char *rel, union db_value *values)
 {
+    struct dd_reldesc d;
+    struct dd_attrdesc *a;
+    union db_value *v;
+    struct dbf_it it;
+    struct dbf f;
+    int size, vaoff, len, i;
+    char *r, *p;
+    char fn[256];
+
+    if (!dd_reldesc_get(&d, rel))
+    {
+        return E_REL_NOT_FOUND;
+    }
+
+    sprintf(fn, "%s%s.rel", db_path, rel);
+    f_open(&f, fn);
+    /* calculate size */
+    size = 0;
+    vaoff = 0;
+    for (i = 0; i < d.nattr; i++)
+    {
+        a = &d.attrs[i];
+        v = &values[i];
+        switch(a->domain)
+        {
+            case DOMAIN_INTEGER:
+            case DOMAIN_FLOAT:
+                size += a->len;
+                vaoff += a->len;
+                break;
+            case DOMAIN_VARCHAR:
+                size += sizeof(struct dbf_va) + strlen(v->v_val);
+                vaoff += sizeof(struct dbf_va);
+        }
+    }
+    /* construct record */
+    if ( (r = malloc(size)) == 0)
+    {
+        perror("dml_insert malloc for temp record");
+        exit(EC_M);
+    }
+    p = r;
+    for (i = 0; i < d.nattr; i++)
+    {
+        a = &d.attrs[i];
+        v = &values[i];
+        switch(a->domain)
+        {
+            case DOMAIN_INTEGER:
+                memcpy(p, &v->i_val, a->len);
+                p += a->len;
+                break;
+            case DOMAIN_FLOAT:
+                if (a->len == 4)
+                    *(float *)p = (float) v->f_val;
+                else
+                    *(double *)p = v->f_val;
+                p += a->len;
+                break;
+            case DOMAIN_VARCHAR:
+                ((struct dbf_va *)p)->off = vaoff;
+                len = strlen(v->v_val);
+                ((struct dbf_va *)p)->len = len;
+                memcpy(r + vaoff, v->v_val, len);
+                vaoff += len;
+                p += sizeof(struct dbf_va);
+        }
+    }
+
+    f_nr(&f, r, size);
+    free(r);
+
+    f_close(&f);
+
+    dd_reldesc_free(&d);
+
+    return 0;
 }
 

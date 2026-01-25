@@ -50,7 +50,7 @@ void f_crt(struct dbf *f, char filename[])
 {
     int fd;
 
-    if ((fd = open(filename, O_CREAT|O_TRUNC|O_WRONLY, 0644)) < 0)
+    if ((fd = open(filename, O_CREAT|O_TRUNC|O_RDWR, 0644)) < 0)
     {
         perror("f_crt open failed");
         exit(EC_IO);
@@ -61,12 +61,6 @@ void f_crt(struct dbf *f, char filename[])
     f->hdr->blks = 1;
     
     f_wb(f, 0, f->blk0);
-
-    if ( -1 == close(f->fd))
-    {
-        perror("f_crt close failed");
-        exit(EC_IO);
-    }
 }
 
 void f_open(struct dbf *f, char filename[])

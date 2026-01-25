@@ -27,12 +27,10 @@ void db_init(char *path)
     /* create relation.rel */
     sprintf(tpath, "%s%s.rel", path, REL_NAME);
     f_crt(&relation, tpath);
-    f_open(&relation, tpath);
 
     /* create attribute */
     sprintf(tpath, "%s%s.rel", path, ATTR_NAME);
     f_crt(&attribute, tpath);
-    f_open(&attribute, tpath);
 
     db_crt_relation();
 
@@ -40,7 +38,6 @@ void db_init(char *path)
 
     f_close(&attribute);
     f_close(&relation);
-
 
 }
 
@@ -232,5 +229,110 @@ void db_val(char *val, int pos, char *r, struct dd_reldesc *d)
                     db_float(r + off, a->len));
             break;
     }
+}
+
+
+void ddl_create_new(struct ddl_create *c, 
+        char *name, uint16_t nattr, uint8_t forg)
+{
+    char *s;
+
+    if ( (s = malloc(strlen(name) + 1)) == 0)
+    {
+        perror("ddl_create_new malloc failed");
+        exit(EC_M);
+    }
+
+    strcpy(s, name);
+    c->name = s;
+    c->nattr = nattr;
+    c->forg = forg;
+
+    if ( (s = calloc(nattr, sizeof(struct ddl_attr))) == 0)
+    {
+        perror("ddl_create_new calloc for attrs failed");
+        exit(EC_M);
+    }
+    c->attrs = (struct ddl_attr *) s;
+}
+
+void ddl_create_attr(struct ddl_create *c, char *name, uint16_t pos, 
+        uint8_t domain, uint16_t len)
+{
+    char *s;
+    struct ddl_attr *a;
+
+    if ( (s = malloc(strlen(name) + 1)) == 0)
+    {
+        perror("ddl_create_new malloc failed");
+        exit(EC_M);
+    }
+    strcpy(s, name);
+    a = c->attrs + pos;
+
+    a->name = s;
+    a->domain = domain;
+    a->pos = pos;
+    a->len = len;
+}
+
+void ddl_create_free(struct ddl_create *c)
+{
+    struct ddl_attr *a, *e;
+
+    free(c->name);
+
+    e = c->attrs + c->nattr;
+    for (a = c->attrs ; a < e ; a++)
+    {
+        free(a->name);
+    }
+
+    free(c->attrs);
+}
+
+void ddl_create_go(struct ddl_create *c)
+{
+    char *r;
+    int i;
+    struct ddl_attr *a;
+    char tpath[256];
+    struct dbf f;
+
+    /* relation record */
+    if ( (r = malloc(DD_REL_RSZ(c->name))) == 0)
+    {
+        perror("db_create_go malloc failed");
+        exit(EC_M);
+    }
+    dd_rel(c->name, c->nattr, c->forg, r); 
+    f_nr(&relation, r, DD_REL_RSZ(c->name));
+    free(r);
+
+    /* attribute records */
+    for (i = 0, a = c->attrs; i < c->nattr; i++, a++)
+    {
+        if ( (r = malloc(DD_ATTR_RSZ(c->name, a->name))) == 0)
+        {
+            perror("db_create_go malloc failed");
+            exit(EC_M);
+        }
+        dd_attr(c->name, a->name, a->domain, a->pos, a->len, r);
+        f_nr(&attribute, r, DD_ATTR_RSZ(c->name, a->name));
+        free(r);
+    }
+
+    /* create file */
+    sprintf(tpath, "%s%s.rel", db_path, c->name);
+    f_crt(&f, tpath);
+    f_close(&f);
+}
+
+void ddl_drop(char *name)
+{
+}
+
+void dml_insert(char *rname, char value[])
+{
 }
 

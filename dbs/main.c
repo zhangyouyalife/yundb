@@ -24,6 +24,19 @@ struct instructor
     double salary;
 };
 
+void create_instructor_rel()
+{
+    struct ddl_create c;
+
+    ddl_create_new(&c, "instructor", 4, FO_HEAP);
+    ddl_create_attr(&c, "id", 0, DOMAIN_VARCHAR, 5);
+    ddl_create_attr(&c, "name", 1, DOMAIN_VARCHAR, 20);
+    ddl_create_attr(&c, "dept_name", 2, DOMAIN_VARCHAR, 20);
+    ddl_create_attr(&c, "salary", 3, DOMAIN_FLOAT, 8);
+    ddl_create_go(&c);
+    ddl_create_free(&c);
+}
+
 void output_record(struct instructor *ins);
 
 void usage()
@@ -311,6 +324,7 @@ void update_record(int bno, int rno)
 #define OP_CREATEFILE   3
 #define OP_INSERT       4
 #define OP_DELETE       5
+#define OP_CREATEINS    6
 
 int main(int argc, char** argv)
 {
@@ -319,7 +333,9 @@ int main(int argc, char** argv)
     int bno, rno;
     char relname[256];
 
-    while ((ch = getopt(argc, argv, "fidulr:")) != -1)
+    strcpy(db_path, DB_PATH);
+
+    while ((ch = getopt(argc, argv, "fidulr:c")) != -1)
     {
         switch (ch) {
             case 'f':
@@ -340,6 +356,9 @@ int main(int argc, char** argv)
             case 'r':
                 memset(relname, 0, 256);
                 strncpy(relname, optarg, 255);
+                break;
+            case 'c':
+                op = OP_CREATEINS;
                 break;
             case '?':
             default:
@@ -382,6 +401,9 @@ int main(int argc, char** argv)
             rno = atoi(argv[1]);
             printf("Updating record at %d %d\n", bno, rno);
             update_record(bno, rno);
+            break;
+        case OP_CREATEINS:
+            create_instructor_rel();
             break;
         default:
             puts("Invalid operation\n");

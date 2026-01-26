@@ -153,7 +153,7 @@ char *b_nr(char *block, int size)
     return (block + bh->free);
 }
 
-void f_dr(struct dbf *f, struct dbf_it *it)
+void f_dr(struct dbf_it *it)
 {
     struct dbf_blkhdr *h;
     struct dbf_rec *r;
@@ -262,3 +262,36 @@ void f_strcpy(char *s, struct dbf_va *v, char *r)
     strncpy(s, r + v->off, v->len);
     s[v->len] = 0;
 }
+
+void f_ur(struct dbf_it *it,  char *r, int newsz)
+{
+    struct dbf_blkhdr *h;
+    struct dbf_rec *rec;
+    int off, sz, newoff;
+    int i;
+
+    h = (struct dbf_blkhdr*) it->blk;
+    off = h->rec[it->r].off;
+    sz = h->rec[it->r].sz;
+    newoff = off + sz - newsz;
+
+    memmove(it->blk + h->free + sz - newsz, 
+            it->blk + h->free,
+            off - h->free);
+    memcpy(it->blk + newoff, r, newsz);
+
+    for (i = 0; i < h->nrec; i++)
+    {
+       rec = &h->rec[i]; 
+       if (rec->sz == -1)
+           continue;
+       if (rec->off < off)
+           rec->off += (sz - newsz);
+    }
+    h->free += (sz - newsz);
+    h->rec[it->r].off = newoff;
+    h->rec[it->r].sz = newsz;
+    
+    f_wb(it->f, it->b, it->blk);
+}
+

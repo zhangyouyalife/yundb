@@ -55,7 +55,8 @@ void f_open(struct dbf *f, char filename[]);
 void f_close(struct dbf *f);
 void f_binit(char bd[BLK_SZ]);
 void f_nr(struct dbf *f, char *r, int size);
-void f_dr(struct dbf *f, struct dbf_it *it);
+void f_dr(struct dbf_it *it);
+void f_ur(struct dbf_it *it, char *r, int size);
 
 char *b_nr(char *block, int size);
 

@@ -73,5 +73,7 @@ struct dd_reldesc
 int dd_reldesc_get(struct dd_reldesc *rd, char *name);
 void dd_reldesc_free(struct dd_reldesc *d);
 
+struct dd_attrdesc *dd_reldesc_attr(char *name, struct dd_reldesc *d);
+
 #endif
 

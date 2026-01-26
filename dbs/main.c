@@ -37,8 +37,6 @@ void create_instructor_rel()
     ddl_create_free(&c);
 }
 
-void output_record(struct instructor *ins);
-
 void usage()
 {
     puts("\nfo_fixed: File Organization: Fixed-Length Records\n");
@@ -100,59 +98,6 @@ void RecordInput(struct instructor *r)
     input_double(&r->salary);
 }
 
-void output_record(struct instructor *ins)
-{
-    printf("Id: ");
-    output_str(ins->id, strlen(ins->id));
-    printf("\nName: ");
-    output_str(ins->name, strlen(ins->name));
-    printf("\nDepart Name: ");
-    output_str(ins->dept_name, strlen(ins->dept_name));
-    printf("\nSalary %lf\n", ins->salary);
-}
-
-
-void RecordFill(struct Record *r, struct instructor *ins)
-{
-    r->id.vf_off = sizeof(struct Record);
-    r->id.vf_len = strlen(ins->id);
-    memcpy(((char *) r) + r->id.vf_off, ins->id, r->id.vf_len);
-
-    r->name.vf_off = r->id.vf_off + r->id.vf_len;
-    r->name.vf_len = strlen(ins->name);
-    memcpy(((char *) r) + r->name.vf_off, ins->name, r->name.vf_len);
-
-
-    r->dept_name.vf_off = r->name.vf_off + r->name.vf_len;
-    r->dept_name.vf_len = strlen(ins->dept_name);
-    memcpy(((char *) r) + r->dept_name.vf_off, ins->dept_name, r->dept_name.vf_len);
-
-    r->salary = ins->salary;
-}
-
-void RecordOutput(struct Record *r)
-{
-    printf("Id: ");
-    output_str(((char *) r) + r->id.vf_off, r->id.vf_len);
-    printf("\nName: ");
-    output_str(((char *) r) + r->name.vf_off, r->name.vf_len);
-    printf("\nDepart Name: ");
-    output_str(((char *) r) + r->dept_name.vf_off, r->dept_name.vf_len);
-    printf("\nSalary %lf\n", r->salary);
-}
-
-int16_t RecordSize(struct instructor *ins)
-{
-    int sz;
-
-    sz = sizeof(struct Record);
-    sz += strlen(ins->id);
-    sz += strlen(ins->name);
-    sz += strlen(ins->dept_name);
-
-    return sz;
-}
-
 void insert_record()
 {
     int b, sz;
@@ -160,8 +105,6 @@ void insert_record()
     union db_value v[4];
 
     RecordInput(&ins);
-
-    //output_record(&ins);
 
     puts("Inserting record ...");
 
@@ -241,51 +184,33 @@ void delete_record(char *id)
     puts("OK");
 }
 
-void update_record(int bno, int rno)
+void update_record(char *id)
 {
     struct dbf_blkhdr *h;
     struct dbf_rec *r;
     int off, sz, newoff, newsz;
     int i;
-
+    union db_value v[4];
+    struct db_where w;
+    
     struct instructor ins;
     struct Record *p;
 
     RecordInput(&ins);
 
-    //output_record(&ins);
+    v[0].v_val = ins.id;
+    v[1].v_val = ins.name;
+    v[2].v_val = ins.dept_name;
+    v[3].f_val = ins.salary;
 
-    newsz = RecordSize(&ins);
+    w.attr = "id";
+    w.v.v_val = id;
 
-    printf("record size = %d\n", sz);
+    dml_update("instructor", v, &w);
 
-    f_rb(&relation, bno, block);
-
-    h = (struct dbf_blkhdr*) block;
-    off = h->rec[rno].off;
-    sz = h->rec[rno].sz;
-    newoff = off + sz - newsz;
-
-    memmove(block + h->free + sz - newsz, 
-            block + h->free,
-            off - h->free);
-    p = (struct Record *) (block + newoff);
-    RecordFill(p, &ins);
-
-    for (i = 0; i < h->nrec; i++)
-    {
-       r = &h->rec[i]; 
-       if (r->sz == -1)
-           continue;
-       if (r->off < off)
-           r->off += (sz - newsz);
-    }
-    h->free += (sz - newsz);
-    h->rec[rno].off = newoff;
-    h->rec[rno].sz = newsz;
-    
-    f_wb(&relation, bno, block);
+    puts("OK");
 }
+
 #define OP_UPDATE       1
 #define OP_LIST         2
 #define OP_CREATEFILE   3
@@ -361,10 +286,7 @@ int main(int argc, char** argv)
             delete_record(argv[0]);
             break;
         case OP_UPDATE:
-            bno = atoi(argv[0]);
-            rno = atoi(argv[1]);
-            printf("Updating record at %d %d\n", bno, rno);
-            update_record(bno, rno);
+            update_record(argv[0]);
             break;
         case OP_CREATEINS:
             create_instructor_rel();
@@ -379,4 +301,3 @@ int main(int argc, char** argv)
 
     exit(0);
 }
-

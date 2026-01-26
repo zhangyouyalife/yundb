@@ -370,30 +370,21 @@ void ddl_drop(char *name)
     
 }
 
-int dml_insert(char *rel, union db_value *values)
+void dml_r(struct dml_rec *rec, 
+        union db_value *values, struct dd_reldesc *d)
 {
-    struct dd_reldesc d;
+    int size, vaoff, len;
+    int i;
     struct dd_attrdesc *a;
     union db_value *v;
-    struct dbf_it it;
-    struct dbf f;
-    int size, vaoff, len, i;
     char *r, *p;
-    char fn[256];
 
-    if (!dd_reldesc_get(&d, rel))
-    {
-        return E_REL_NOT_FOUND;
-    }
-
-    sprintf(fn, "%s%s.rel", db_path, rel);
-    f_open(&f, fn);
     /* calculate size */
     size = 0;
     vaoff = 0;
-    for (i = 0; i < d.nattr; i++)
+    for (i = 0; i < d->nattr; i++)
     {
-        a = &d.attrs[i];
+        a = &d->attrs[i];
         v = &values[i];
         switch(a->domain)
         {
@@ -414,9 +405,9 @@ int dml_insert(char *rel, union db_value *values)
         exit(EC_M);
     }
     p = r;
-    for (i = 0; i < d.nattr; i++)
+    for (i = 0; i < d->nattr; i++)
     {
-        a = &d.attrs[i];
+        a = &d->attrs[i];
         v = &values[i];
         switch(a->domain)
         {
@@ -441,8 +432,35 @@ int dml_insert(char *rel, union db_value *values)
         }
     }
 
-    f_nr(&f, r, size);
-    free(r);
+    rec->sz = size;
+    rec->r = r;
+}
+
+void dml_rfree(struct dml_rec *r)
+{
+    free(r->r);
+}
+
+int dml_insert(char *rel, union db_value *values)
+{
+    struct dd_reldesc d;
+    struct dbf f;
+    char fn[256];
+    struct dml_rec r;
+
+    if (!dd_reldesc_get(&d, rel))
+    {
+        return E_REL_NOT_FOUND;
+    }
+
+    sprintf(fn, "%s%s.rel", db_path, rel);
+    f_open(&f, fn);
+
+    dml_r(&r, values, &d);
+
+    f_nr(&f, r.r, r.sz);
+
+    dml_rfree(&r);
 
     f_close(&f);
 
@@ -494,14 +512,14 @@ int dml_delete(char *rel, struct db_where *w)
                 db_attr_val(&v, at->pos, r, &d, buf);
                 if (w->v.i_val == v.i_val) 
                 {
-                    f_dr(&f, &it);
+                    f_dr(&it);
                 }
                 break;
             case DOMAIN_FLOAT:
                 db_attr_val(&v, at->pos, r, &d, buf);
                 if (w->v.f_val == v.f_val) 
                 {
-                    f_dr(&f, &it);
+                    f_dr(&it);
                 }
                 break;
             case DOMAIN_VARCHAR:
@@ -513,7 +531,7 @@ int dml_delete(char *rel, struct db_where *w)
                 db_attr_val(&v, at->pos, r, &d, buf);
                 if (strcmp(w->v.v_val, v.v_val) == 0) 
                 {
-                    f_dr(&f, &it);
+                    f_dr(&it);
                 }
                 free(buf);
                 break;
@@ -529,3 +547,77 @@ int dml_delete(char *rel, struct db_where *w)
     return 0;
 }
 
+int dml_update(char *rel, union db_value *values, struct db_where *w)
+{
+    struct dd_reldesc d;
+    struct dd_attrdesc *a, *at;
+    union db_value v;
+    struct dbf_it it;
+    struct dbf f;
+    int size, vaoff, len, i;
+    char *r, *nr, *p;
+    char fn[256], *buf;
+    struct dml_rec rec;
+
+    if (!dd_reldesc_get(&d, rel))
+    {
+        return E_REL_NOT_FOUND;
+    }
+
+    if ( (at = dd_reldesc_attr(w->attr, &d)) == 0)
+    {
+        return E_ATTR_NOT_FOUND;
+    }
+
+    sprintf(fn, "%s%s.rel", db_path, rel);
+    f_open(&f, fn);
+
+    f_it(&f, &it);
+    while ( (r = f_itnext(&it)) != 0)
+    {
+        switch (at->domain)
+        {
+            case DOMAIN_INTEGER:
+                db_attr_val(&v, at->pos, r, &d, buf);
+                if (w->v.i_val == v.i_val) 
+                {
+                    dml_r(&rec, values, &d);
+                    f_ur(&it, rec.r, rec.sz);
+                    dml_rfree(&rec);
+                }
+                break;
+            case DOMAIN_FLOAT:
+                db_attr_val(&v, at->pos, r, &d, buf);
+                if (w->v.f_val == v.f_val) 
+                {
+                    dml_r(&rec, values, &d);
+                    f_ur(&it, rec.r, rec.sz);
+                    dml_rfree(&rec);
+                }
+                break;
+            case DOMAIN_VARCHAR:
+                if ( (buf = malloc(at->len + 1)) == 0)
+                {
+                    perror("dml_delete malloc buf");
+                    exit(EC_M);
+                }
+                db_attr_val(&v, at->pos, r, &d, buf);
+                if (strcmp(w->v.v_val, v.v_val) == 0) 
+                {
+                    dml_r(&rec, values, &d);
+                    f_ur(&it, rec.r, rec.sz);
+                    dml_rfree(&rec);
+                }
+                free(buf);
+                break;
+        }
+    }
+
+    f_itfree(&it);
+
+    f_close(&f);
+
+    dd_reldesc_free(&d);
+
+    return 0;
+}

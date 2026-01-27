@@ -1,4 +1,6 @@
-main: main.o datadict.o db.o file.o list.o
+main: main.o datadict.o db.o file.o data.o list.o
+
+data.o: data.c data.h
 
 file.o: file.c file.h conf.h
 

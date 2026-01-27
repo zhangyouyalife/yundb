@@ -7,6 +7,7 @@
 #include "db.h"
 #include "file.h"
 #include "datadict.h"
+#include "data.h"
 
 int64_t db_integer(char *s, int l)
 {

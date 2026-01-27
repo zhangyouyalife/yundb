@@ -41,9 +41,6 @@ struct __attribute__((packed)) dd_attr
 #define ATTR_NAME       "attribute"
 #define ATTR_NAME_LEN   sizeof(ATTR_NAME)
 
-#define DOMAIN_INTEGER  1
-#define DOMAIN_FLOAT    2
-#define DOMAIN_VARCHAR  3
 
 void dd_rel(char *name, int nattr, int forg, char *rec);
 
@@ -69,6 +66,8 @@ struct dd_reldesc
     uint8_t             forg;
 };
 
+int dd_attr_off(int pos, struct dd_reldesc *d);
+
 struct dd_attrdesc *dd_reldesc_attr(char *name, struct dd_reldesc *d);
 
 void dd_create(char *path);
@@ -84,6 +83,7 @@ struct linkhead datadict;
 void dd_init();
 void dd_free();
 struct dd_rel_m *dd_get(char *rname);
+
 
 #endif
 

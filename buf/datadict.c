@@ -6,6 +6,7 @@
 #include "exitcode.h"
 #include "list.h"
 #include "datadict.h"
+#include "data.h"
 #include "file.h"
 
 static struct dbf  relation;
@@ -330,7 +331,7 @@ void dd_relmfree(void *relm)
     free(relm);
 }
 
-/* schema init 
+/* data dict init 
  * DO NOT USE BUFFER layer, for it has not initialzied */
 void dd_init()
 {
@@ -342,6 +343,10 @@ void dd_init()
     int i;
     char *r;
     struct dd_rel_m *m;
+    struct d_datum_h *ddh;
+    struct d_datum_b ddb;
+    int off;
+    struct dbf_va *va;
 
     ll_init(&datadict);
 
@@ -363,8 +368,18 @@ void dd_init()
             ad = &rd.attrs[i];
             if (0 == strcmp(ad->name, "name"))
             {
-                db_val(s, i, r, &rd);
-                ll_add(&datadict, dd_relmget(s)); 
+                /* TODO refactor db_val */ 
+                
+                off = dd_attr_off(ad->pos, &rd);
+                va = (struct dbf_va *) (r + off);
+
+                ddb.domain = ad->domain;
+                ddb.len = va->len;
+                ddb.bytes = r + va->off;
+
+                ddh = d_btoh(&ddb);
+                ll_add(&datadict, dd_relmget(ddh->v.v_val)); 
+                d_hfree(ddh);
             }
         }
     }
@@ -401,5 +416,27 @@ struct dd_rel_m *dd_get(char *rname)
     }
 
     return 0;
+}
+
+int dd_attr_off(int pos, struct dd_reldesc *d)
+{
+    int off; 
+    int i;
+    struct dd_attrdesc *a;
+
+    a = d->attrs;
+    for (i = 0, off = 0; i < pos; i++, a++) {
+        switch (a->domain)
+        {
+            case DOMAIN_INTEGER:
+            case DOMAIN_FLOAT:
+                off += a->len;
+                break;
+           case DOMAIN_VARCHAR:
+                off += 4;
+        }
+    }
+
+    return off;
 }
 

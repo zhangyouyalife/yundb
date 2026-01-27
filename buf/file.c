@@ -252,8 +252,7 @@ char *f_itnext(struct dbf_it *it)
 
 void f_itfree(struct dbf_it *it)
 {
-    if (it->blk)
-        free(it->blk);
+    free(it->blk);
 }
 
 void f_strcpy(char *s, struct dbf_va *v, char *r)

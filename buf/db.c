@@ -8,150 +8,6 @@
 #include "file.h"
 #include "datadict.h"
 
-void db_crt_relation();
-
-void db_crt_attribute();
-
-void db_init(char *path)
-{
-    static char dblk[BLK_SZ];
-    char *r;
-    char tpath[256];
-
-    if ( -1 == mkdir(path, 0755) )
-    {
-        perror("db_init mkdir failed");
-        exit(EC_IO);
-    }
-
-    /* create relation.rel */
-    sprintf(tpath, "%s%s.rel", path, REL_NAME);
-    f_crt(&relation, tpath);
-
-    /* create attribute */
-    sprintf(tpath, "%s%s.rel", path, ATTR_NAME);
-    f_crt(&attribute, tpath);
-
-    db_crt_relation();
-
-    db_crt_attribute();
-
-    f_close(&attribute);
-    f_close(&relation);
-
-}
-
-void db_crt_attribute()
-{
-    char *r;
-
-    /* relation record */
-    if ( (r = malloc(DD_REL_RSZ(ATTR_NAME))) == 0)
-    {
-        perror("db_crt_attribute malloc failed");
-        exit(EC_M);
-    }
-    dd_rel(ATTR_NAME, 5, FO_HEAP, r); 
-    f_nr(&relation, r, DD_REL_RSZ(ATTR_NAME));
-    free(r);
-
-    /* attribute records */
-    /* attr: attribute.rel */
-    if ( (r = malloc(DD_ATTR_RSZ(ATTR_NAME, "rel"))) == 0)
-    {
-        perror("db_crt_attribute malloc failed");
-        exit(EC_M);
-    }
-    dd_attr(ATTR_NAME, "rel", DOMAIN_VARCHAR, 0, 256, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "rel"));
-    free(r);
-    /* attr: attribute.name */
-    if ( (r = malloc(DD_ATTR_RSZ(ATTR_NAME, "name"))) == 0)
-    {
-        perror("db_crt_attribute malloc failed");
-        exit(EC_M);
-    }
-    dd_attr(ATTR_NAME, "name", DOMAIN_VARCHAR, 1, 256, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "name"));
-    free(r);
-
-    /* attr: relation.domain */
-    if ( (r = malloc(DD_ATTR_RSZ(ATTR_NAME, "domain"))) == 0)
-    {
-        perror("db_crt_attribute malloc failed");
-        exit(EC_M);
-    }
-    dd_attr(ATTR_NAME, "domain", DOMAIN_INTEGER, 2, 1, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "domain"));
-    free(r);
-
-    /* attr: relation.pos */
-    if ( (r = malloc(DD_ATTR_RSZ(ATTR_NAME, "pos"))) == 0)
-    {
-        perror("db_crt_attribute malloc failed");
-        exit(EC_M);
-    }
-    dd_attr(ATTR_NAME, "pos", DOMAIN_INTEGER, 3, 2, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "pos"));
-    free(r);
-
-    /* attr: relation.pos */
-    if ( (r = malloc(DD_ATTR_RSZ(ATTR_NAME, "len"))) == 0)
-    {
-        perror("db_crt_attribute malloc failed");
-        exit(EC_M);
-    }
-    dd_attr(ATTR_NAME, "len", DOMAIN_INTEGER, 4, 2, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "len"));
-    free(r);
-}
-
-void db_crt_relation()
-{
-    char *r;
-
-    /* relation record */
-    if ( (r = malloc(DD_REL_RSZ(REL_NAME))) == 0)
-    {
-        perror("db_crt_relation malloc failed");
-        exit(EC_M);
-    }
-    dd_rel(REL_NAME, 3, FO_HEAP, r); 
-    f_nr(&relation, r, DD_REL_RSZ(REL_NAME));
-    free(r);
-
-    /* attribute records */
-    /* attr: relation.name */
-    if ( (r = malloc(DD_ATTR_RSZ(REL_NAME, "name"))) == 0)
-    {
-        perror("db_crt_relation malloc failed");
-        exit(EC_M);
-    }
-    dd_attr(REL_NAME, "name", DOMAIN_VARCHAR, 0, 256, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(REL_NAME, "name"));
-    free(r);
-
-    /* attr: relation.nattr */
-    if ( (r = malloc(DD_ATTR_RSZ(REL_NAME, "nattr"))) == 0)
-    {
-        perror("db_crt_relation malloc failed");
-        exit(EC_M);
-    }
-    dd_attr(REL_NAME, "nattr", DOMAIN_INTEGER, 1, 2, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(REL_NAME, "nattr"));
-    free(r);
-
-    /* attr: relation.forg */
-    if ( (r = malloc(DD_ATTR_RSZ(REL_NAME, "forg"))) == 0)
-    {
-        perror("db_crt_relation malloc failed");
-        exit(EC_M);
-    }
-    dd_attr(REL_NAME, "forg", DOMAIN_INTEGER, 2, 1, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(REL_NAME, "forg"));
-    free(r);
-}
-
 int64_t db_integer(char *s, int l)
 {
     switch (l)
@@ -343,7 +199,7 @@ void ddl_create_go(struct ddl_create *c)
         exit(EC_M);
     }
     dd_rel(c->name, c->nattr, c->forg, r); 
-    f_nr(&relation, r, DD_REL_RSZ(c->name));
+    f_nr(&dd_get("relation")->f, r, DD_REL_RSZ(c->name));
     free(r);
 
     /* attribute records */
@@ -355,7 +211,7 @@ void ddl_create_go(struct ddl_create *c)
             exit(EC_M);
         }
         dd_attr(c->name, a->name, a->domain, a->pos, a->len, r);
-        f_nr(&attribute, r, DD_ATTR_RSZ(c->name, a->name));
+        f_nr(&dd_get("attribute")->f, r, DD_ATTR_RSZ(c->name, a->name));
         free(r);
     }
 
@@ -441,37 +297,28 @@ void dml_rfree(struct dml_rec *r)
     free(r->r);
 }
 
-int dml_insert(char *rel, union db_value *values)
+int dml_insert(char *rname, union db_value *values)
 {
-    struct dd_reldesc d;
-    struct dbf f;
-    char fn[256];
     struct dml_rec r;
+    struct dd_rel_m *rel;
 
-    if (!dd_reldesc_get(&d, rel))
+    if ( !(rel = dd_get(rname)) )
     {
         return E_REL_NOT_FOUND;
     }
 
-    sprintf(fn, "%s%s.rel", db_path, rel);
-    f_open(&f, fn);
+    dml_r(&r, values, &rel->desc);
 
-    dml_r(&r, values, &d);
-
-    f_nr(&f, r.r, r.sz);
+    f_nr(&rel->f, r.r, r.sz);
 
     dml_rfree(&r);
-
-    f_close(&f);
-
-    dd_reldesc_free(&d);
 
     return 0;
 }
 
-int dml_delete(char *rel, struct db_where *w)
+int dml_delete(char *rname, struct db_where *w)
 {
-    struct dd_reldesc d;
+    struct dd_rel_m *rel;
     struct dd_attrdesc *a, *at;
     union db_value v;
     struct dbf_it it;
@@ -480,15 +327,15 @@ int dml_delete(char *rel, struct db_where *w)
     char *r, *p;
     char fn[256], *buf;
 
-    if (!dd_reldesc_get(&d, rel))
+    if ( !(rel = dd_get(rname)) )
     {
         return E_REL_NOT_FOUND;
     }
 
     at = 0;
-    for (i = 0; i < d.nattr; i++)
+    for (i = 0; i < rel->desc.nattr; i++)
     {
-        a = &d.attrs[i];
+        a = &rel->desc.attrs[i];
         if (strcmp(a->name, w->attr) == 0)
         {
             at = a;
@@ -500,23 +347,21 @@ int dml_delete(char *rel, struct db_where *w)
         return E_ATTR_NOT_FOUND;
     }
 
-    sprintf(fn, "%s%s.rel", db_path, rel);
-    f_open(&f, fn);
 
-    f_it(&f, &it);
+    f_it(&rel->f, &it);
     while ( (r = f_itnext(&it)) != 0)
     {
         switch (at->domain)
         {
             case DOMAIN_INTEGER:
-                db_attr_val(&v, at->pos, r, &d, buf);
+                db_attr_val(&v, at->pos, r, &rel->desc, buf);
                 if (w->v.i_val == v.i_val) 
                 {
                     f_dr(&it);
                 }
                 break;
             case DOMAIN_FLOAT:
-                db_attr_val(&v, at->pos, r, &d, buf);
+                db_attr_val(&v, at->pos, r, &rel->desc, buf);
                 if (w->v.f_val == v.f_val) 
                 {
                     f_dr(&it);
@@ -528,7 +373,7 @@ int dml_delete(char *rel, struct db_where *w)
                     perror("dml_delete malloc buf");
                     exit(EC_M);
                 }
-                db_attr_val(&v, at->pos, r, &d, buf);
+                db_attr_val(&v, at->pos, r, &rel->desc, buf);
                 if (strcmp(w->v.v_val, v.v_val) == 0) 
                 {
                     f_dr(&it);
@@ -540,16 +385,12 @@ int dml_delete(char *rel, struct db_where *w)
 
     f_itfree(&it);
 
-    f_close(&f);
-
-    dd_reldesc_free(&d);
-
     return 0;
 }
 
-int dml_update(char *rel, union db_value *values, struct db_where *w)
+int dml_update(char *rname, union db_value *values, struct db_where *w)
 {
-    struct dd_reldesc d;
+    struct dd_rel_m *rel;
     struct dd_attrdesc *a, *at;
     union db_value v;
     struct dbf_it it;
@@ -559,38 +400,35 @@ int dml_update(char *rel, union db_value *values, struct db_where *w)
     char fn[256], *buf;
     struct dml_rec rec;
 
-    if (!dd_reldesc_get(&d, rel))
+    if ( !(rel=dd_get(rname)))
     {
         return E_REL_NOT_FOUND;
     }
 
-    if ( (at = dd_reldesc_attr(w->attr, &d)) == 0)
+    if ( (at = dd_reldesc_attr(w->attr, &rel->desc)) == 0)
     {
         return E_ATTR_NOT_FOUND;
     }
 
-    sprintf(fn, "%s%s.rel", db_path, rel);
-    f_open(&f, fn);
-
-    f_it(&f, &it);
+    f_it(&rel->f, &it);
     while ( (r = f_itnext(&it)) != 0)
     {
         switch (at->domain)
         {
             case DOMAIN_INTEGER:
-                db_attr_val(&v, at->pos, r, &d, buf);
+                db_attr_val(&v, at->pos, r, &rel->desc, buf);
                 if (w->v.i_val == v.i_val) 
                 {
-                    dml_r(&rec, values, &d);
+                    dml_r(&rec, values, &rel->desc);
                     f_ur(&it, rec.r, rec.sz);
                     dml_rfree(&rec);
                 }
                 break;
             case DOMAIN_FLOAT:
-                db_attr_val(&v, at->pos, r, &d, buf);
+                db_attr_val(&v, at->pos, r, &rel->desc, buf);
                 if (w->v.f_val == v.f_val) 
                 {
-                    dml_r(&rec, values, &d);
+                    dml_r(&rec, values, &rel->desc);
                     f_ur(&it, rec.r, rec.sz);
                     dml_rfree(&rec);
                 }
@@ -601,10 +439,10 @@ int dml_update(char *rel, union db_value *values, struct db_where *w)
                     perror("dml_delete malloc buf");
                     exit(EC_M);
                 }
-                db_attr_val(&v, at->pos, r, &d, buf);
+                db_attr_val(&v, at->pos, r, &rel->desc, buf);
                 if (strcmp(w->v.v_val, v.v_val) == 0) 
                 {
-                    dml_r(&rec, values, &d);
+                    dml_r(&rec, values, &rel->desc);
                     f_ur(&it, rec.r, rec.sz);
                     dml_rfree(&rec);
                 }
@@ -614,10 +452,6 @@ int dml_update(char *rel, union db_value *values, struct db_where *w)
     }
 
     f_itfree(&it);
-
-    f_close(&f);
-
-    dd_reldesc_free(&d);
 
     return 0;
 }

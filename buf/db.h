@@ -3,10 +3,6 @@
 
 #include "datadict.h"
 
-char db_path[256];
-
-void db_init(char *path);
-
 union db_value {
     int64_t i_val;
     double f_val;

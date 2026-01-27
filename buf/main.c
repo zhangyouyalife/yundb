@@ -124,14 +124,14 @@ void list_records(char *rname)
     struct dd_rel *p;
     struct dbf_blkhdr *bh;
     char s[256];
-    struct dd_reldesc rd;
+    struct dd_rel_m *rel;
     struct dbf f;
     struct dbf_it it;
     char *r;
     char val[256];
 
     /* printf("To find relation [%s]\n", rname); */
-    if (dd_reldesc_get(&rd, rname))
+    if ( (rel = dd_get(rname)) )
     {
         /* metadata found */
         /* printf("Found [%s]\n", rd.name); */
@@ -144,23 +144,17 @@ void list_records(char *rname)
         puts("===");
         puts(rname);
         puts("===");
-        sprintf(s, "%s%s.rel", DB_PATH, rname);
-        f_open(&f, s);
-        f_it(&f, &it);
+        f_it(&rel->f, &it);
         while ( (r = f_itnext(&it)) != 0)
         {
-            for (i = 0; i < rd.nattr; i++)
+            for (i = 0; i < rel->desc.nattr; i++)
             {
-                db_val(val, i, r, &rd);
-                printf("%s: %s\n", rd.attrs[i].name, val);
+                db_val(val, i, r, &rel->desc);
+                printf("%s: %s\n", rel->desc.attrs[i].name, val);
             }
             puts("---");
         }
         f_itfree(&it);
-        f_close(&f);
-
-
-        dd_reldesc_free(&rd);
     }
     else
     {
@@ -266,13 +260,14 @@ int main(int argc, char** argv)
 */
     if (op == OP_CREATEFILE)
     {
-        //f_crt(&relation, DB_FILE_NAME);
-        db_init(DB_PATH);
+        dd_create(DB_PATH);
         exit(0);
     }
 
-    f_open(&relation, DB_REL_PATH);
+    /*f_open(&relation, DB_REL_PATH);
     f_open(&attribute, DB_ATTR_PATH);
+    */
+    dd_init();
 
     switch(op)
     {
@@ -296,8 +291,10 @@ int main(int argc, char** argv)
             exit(2);
     }
 
+    dd_free();
+/*
     f_close(&attribute);
     f_close(&relation);
-
+*/
     exit(0);
 }

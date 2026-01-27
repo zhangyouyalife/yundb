@@ -1,6 +1,8 @@
 #ifndef _FILE_
 #define _FILE_
 
+#include <stdint.h>
+
 #include "conf.h"
 
 /* Database file header */ 

@@ -8,10 +8,9 @@
 #include <stdint.h>
 #include <string.h>
 #include "file.h"
+#include "list.h"
 
-struct dbf  relation;
-
-struct dbf  attribute;
+char db_path[256];
 
 struct __attribute__((packed)) dd_rel
 {
@@ -70,10 +69,21 @@ struct dd_reldesc
     uint8_t             forg;
 };
 
-int dd_reldesc_get(struct dd_reldesc *rd, char *name);
-void dd_reldesc_free(struct dd_reldesc *d);
-
 struct dd_attrdesc *dd_reldesc_attr(char *name, struct dd_reldesc *d);
+
+void dd_create(char *path);
+
+struct dd_rel_m
+{
+    struct dbf f;
+    struct dd_reldesc desc;
+};
+
+struct linkhead datadict;
+
+void dd_init();
+void dd_free();
+struct dd_rel_m *dd_get(char *rname);
 
 #endif
 

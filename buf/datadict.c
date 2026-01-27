@@ -7,6 +7,7 @@
 #include "list.h"
 #include "datadict.h"
 #include "data.h"
+#include "tuple.h"
 #include "file.h"
 
 static struct dbf  relation;
@@ -50,14 +51,14 @@ void dd_rel(char *name, int nattr, int forg, char *rec)
 
 void dd_reldescfrom(struct dd_reldesc *m, struct dd_rel *d)
 {
-    f_strcpy(m->name, &d->name, (char *)d);
+    t_varchar(m->name, &d->name, (char *)d);
     m->nattr = d->nattr;
     m->forg = d->forg;
 }
 
 void dd_attrdescfrom(struct dd_attrdesc *m, struct dd_attr *d)
 {
-    f_strcpy(m->name, &d->attr, (char *)d); 
+    t_varchar(m->name, &d->attr, (char *)d); 
     m->domain = d->domain;
     m->pos = d->pos;
     m->len = d->len;
@@ -77,7 +78,7 @@ int dd_attrdesc_get(struct dd_attrdesc ads[], char *rname)
     while ( (r = f_itnext(&it)) != 0 ) 
     {
         attr = (struct dd_attr *) r;
-        f_strcpy(nm, &attr->rel, r);
+        t_varchar(nm, &attr->rel, r);
         if (strcmp(nm, rname) == 0)
         {
             found++;
@@ -104,7 +105,7 @@ int dd_reldesc_get(struct dd_reldesc *rd, char *name)
     while ( (r = f_itnext(&it)) != 0 ) 
     {
         rel = (struct dd_rel *) r;
-        f_strcpy(nb, &rel->name, r);
+        t_varchar(nb, &rel->name, r);
         if (strcmp(nb, name) == 0)
         {
             dd_reldescfrom(rd, rel);
@@ -155,6 +156,28 @@ struct dd_attrdesc *dd_reldesc_attr(char *name, struct dd_reldesc *d)
     return at;
 }
 
+/* get attr offset in tuple */
+int dd_attr_off(int pos, struct dd_reldesc *d)
+{
+    int off; 
+    int i;
+    struct dd_attrdesc *a;
+
+    a = d->attrs;
+    for (i = 0, off = 0; i < pos; i++, a++) {
+        switch (a->domain)
+        {
+            case DOMAIN_INTEGER:
+            case DOMAIN_FLOAT:
+                off += a->len;
+                break;
+           case DOMAIN_VARCHAR:
+                off += 4;
+        }
+    }
+
+    return off;
+}
 
 void dd_crt_relation();
 
@@ -346,7 +369,7 @@ void dd_init()
     struct d_datum_h *ddh;
     struct d_datum_b ddb;
     int off;
-    struct dbf_va *va;
+    struct t_va *va;
 
     ll_init(&datadict);
 
@@ -368,10 +391,8 @@ void dd_init()
             ad = &rd.attrs[i];
             if (0 == strcmp(ad->name, "name"))
             {
-                /* TODO refactor db_val */ 
-                
                 off = dd_attr_off(ad->pos, &rd);
-                va = (struct dbf_va *) (r + off);
+                va = (struct t_va *) (r + off);
 
                 ddb.domain = ad->domain;
                 ddb.len = va->len;
@@ -416,27 +437,5 @@ struct dd_rel_m *dd_get(char *rname)
     }
 
     return 0;
-}
-
-int dd_attr_off(int pos, struct dd_reldesc *d)
-{
-    int off; 
-    int i;
-    struct dd_attrdesc *a;
-
-    a = d->attrs;
-    for (i = 0, off = 0; i < pos; i++, a++) {
-        switch (a->domain)
-        {
-            case DOMAIN_INTEGER:
-            case DOMAIN_FLOAT:
-                off += a->len;
-                break;
-           case DOMAIN_VARCHAR:
-                off += 4;
-        }
-    }
-
-    return off;
 }
 

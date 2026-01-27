@@ -6,6 +6,7 @@
 
 #include "exitcode.h"
 #include "file.h"
+#include "tuple.h"
 
 void f_bs(struct dbf *f, int bn)
 {
@@ -253,12 +254,6 @@ char *f_itnext(struct dbf_it *it)
 void f_itfree(struct dbf_it *it)
 {
     free(it->blk);
-}
-
-void f_strcpy(char *s, struct dbf_va *v, char *r)
-{
-    strncpy(s, r + v->off, v->len);
-    s[v->len] = 0;
 }
 
 void f_ur(struct dbf_it *it,  char *r, int newsz)

@@ -14,7 +14,7 @@ char db_path[256];
 
 struct __attribute__((packed)) dd_rel
 {
-    struct dbf_va    name;
+    struct t_va     name;
     uint16_t        nattr;
     uint8_t         forg;
     char            va_start[0];
@@ -27,8 +27,8 @@ struct __attribute__((packed)) dd_rel
 
 struct __attribute__((packed)) dd_attr
 {
-    struct dbf_va    rel;
-    struct dbf_va    attr;
+    struct t_va     rel;
+    struct t_va     attr;
     uint8_t         domain;
     uint16_t        pos;
     uint16_t        len;

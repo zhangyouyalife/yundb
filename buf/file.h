@@ -4,20 +4,13 @@
 #include <stdint.h>
 
 #include "conf.h"
+#include "tuple.h"
 
 /* Database file header */ 
 struct __attribute__((packed)) dbf_hdr
 {
     uint32_t    blks;
 };
-
-/* variable length data */
-struct __attribute__((packed)) dbf_va
-{
-    int16_t off;
-    int16_t len;
-};
-
 
 /* Database file record slot */
 struct __attribute__((packed)) dbf_rec
@@ -66,8 +59,6 @@ char *b_nr(char *block, int size);
 void f_it(struct dbf *f, struct dbf_it *it);
 char *f_itnext(struct dbf_it *it);
 void f_itfree(struct dbf_it *it);
-
-void f_strcpy(char *s, struct dbf_va *v, char *r);
 
 #endif
 

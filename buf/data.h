@@ -21,12 +21,18 @@ struct d_datum_h
     } v;
 };
 
+#define D_INT(h)   ((h)->v.i_val)
+#define D_FLOAT(h)   ((h)->v.f_val)
+#define D_VCHAR(h)   ((h)->v.i_val)
+
 #define DOMAIN_INTEGER  1
 #define DOMAIN_FLOAT    2
 #define DOMAIN_VARCHAR  3
 
 struct d_datum_h *d_btoh(struct d_datum_b *b);
 void d_hfree(struct d_datum_h *h);
+
+char *d_text(char *val, struct d_datum_h *h);
 
 #endif
 

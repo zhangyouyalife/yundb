@@ -8,13 +8,12 @@
 #include "exitcode.h"
 #include "block.h"
 #include "file.h"
-#include "record.h"
+#include "tuple.h"
 #include "db.h"
 #include "datadict.h"
+#include "data.h"
 
 #define DB_PATH         "./database/"
-#define DB_REL_PATH     "./database/relation.rel"
-#define DB_ATTR_PATH     "./database/attribute.rel"
 
 struct instructor
 {
@@ -100,9 +99,8 @@ void RecordInput(struct instructor *r)
 
 void insert_record()
 {
-    int b, sz;
     struct instructor ins;
-    union db_value v[4];
+    union dml_value v[4];
 
     RecordInput(&ins);
 
@@ -118,17 +116,12 @@ void insert_record()
 
 void list_records(char *rname)
 {   
-    int b, sz, i;
-
-    struct instructor ins;
-    struct dd_rel *p;
-    struct dbf_blkhdr *bh;
-    char s[256];
+    int i;
     struct dd_rel_m *rel;
-    struct dbf f;
     struct dbf_it it;
     char *r;
     char val[256];
+    struct d_datum_h *v;
 
     /* printf("To find relation [%s]\n", rname); */
     if ( (rel = dd_get(rname)) )
@@ -149,8 +142,9 @@ void list_records(char *rname)
         {
             for (i = 0; i < rel->desc.nattr; i++)
             {
-                db_val(val, i, r, &rel->desc);
-                printf("%s: %s\n", rel->desc.attrs[i].name, val);
+                v = db_attr_val(i, r, &rel->desc);
+                printf("%s: %s\n", rel->desc.attrs[i].name, d_text(val, v));
+                d_hfree(v);
             }
             puts("---");
         }
@@ -164,11 +158,7 @@ void list_records(char *rname)
 
 void delete_record(char *id)
 {
-    struct dbf_blkhdr *h;
-    struct dbf_rec *r;
-    int off, sz;
-    int i;
-    struct db_where w;
+    struct dml_where w;
     
     w.attr = "id";
     w.v.v_val = id;
@@ -180,15 +170,10 @@ void delete_record(char *id)
 
 void update_record(char *id)
 {
-    struct dbf_blkhdr *h;
-    struct dbf_rec *r;
-    int off, sz, newoff, newsz;
-    int i;
-    union db_value v[4];
-    struct db_where w;
+    union dml_value v[4];
+    struct dml_where w;
     
     struct instructor ins;
-    struct Record *p;
 
     RecordInput(&ins);
 
@@ -216,7 +201,6 @@ int main(int argc, char** argv)
 {
     int ch;
     int op;
-    int bno, rno;
     char relname[256];
 
     strcpy(db_path, DB_PATH);
@@ -260,13 +244,10 @@ int main(int argc, char** argv)
 */
     if (op == OP_CREATEFILE)
     {
-        dd_create(DB_PATH);
+        dd_create(db_path);
         exit(0);
     }
 
-    /*f_open(&relation, DB_REL_PATH);
-    f_open(&attribute, DB_ATTR_PATH);
-    */
     dd_init();
 
     switch(op)
@@ -292,9 +273,6 @@ int main(int argc, char** argv)
     }
 
     dd_free();
-/*
-    f_close(&attribute);
-    f_close(&relation);
-*/
+
     exit(0);
 }

@@ -3,16 +3,8 @@
 
 #include "datadict.h"
 
-union db_value {
-    int64_t i_val;
-    double f_val;
-    char *v_val;
-};
 
-void db_val(char *val, int pos, char *r, struct dd_reldesc *d);
-void db_attr_val(union db_value *v, int pos, 
-        char *r, struct dd_reldesc *d,
-        char *buf);
+struct d_datum_h *db_attr_val(int pos, char *r, struct dd_reldesc *d);
 
 struct ddl_attr
 {
@@ -47,20 +39,28 @@ struct dml_rec
     char *r;
 };
 
-void dml_r(struct dml_rec *r, 
-        union db_value *values, struct dd_reldesc *d);
-void dml_rfree(struct dml_rec *r);
-
-int dml_insert(char *rel, union db_value *values);
-
-struct db_where {
-    char *attr;
-    union db_value v;
+union dml_value
+{
+        int64_t i_val;
+        double f_val;
+        char *v_val;
 };
 
-int dml_delete(char *rel, struct db_where *w);
+struct dml_where {
+    char *attr;
+    union dml_value v;
+};
 
-int dml_update(char *rel, union db_value *values, struct db_where *w);
+void dml_r(struct dml_rec *r, 
+        union dml_value *values, struct dd_reldesc *d);
+void dml_rfree(struct dml_rec *r);
+
+int dml_insert(char *rel, union dml_value *values);
+
+
+int dml_delete(char *rel, struct dml_where *w);
+
+int dml_update(char *rel, union dml_value *values, struct dml_where *w);
 
 #define E_REL_NOT_FOUND 1
 #define E_ATTR_NOT_FOUND 2

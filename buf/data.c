@@ -87,3 +87,24 @@ void d_hfree(struct d_datum_h *h)
     free(h);
 }
 
+char *d_text(char *val, struct d_datum_h *v)
+{
+    switch (v->domain)
+    {
+        case DOMAIN_VARCHAR:
+            strcpy(val, v->v.v_val);
+            break;
+        case DOMAIN_INTEGER:
+            sprintf(val, 
+                    "%lld",
+                    v->v.i_val);
+            break;
+        case DOMAIN_FLOAT:
+            sprintf(val,
+                    "%lf",
+                    v->v.f_val);
+            break;
+    }
+
+    return val;
+}

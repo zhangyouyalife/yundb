@@ -360,17 +360,61 @@ int dml_delete(char *rname, struct dml_where *w)
     return 0;
 }
 
+void blk_ur(char *blk, uint16_t t, char *r, int newsz)
+{
+    struct dbf_blkhdr *h;
+    struct dbf_rec *rec;
+    int off, sz, newoff;
+    int i;
+
+    h = (struct dbf_blkhdr*) blk;
+
+    off = h->rec[t].off;
+    sz = h->rec[t].sz;
+    newoff = off + sz - newsz;
+
+    memmove(blk + h->free + sz - newsz, 
+            blk + h->free,
+            off - h->free);
+    memcpy(blk + newoff, r, newsz);
+
+    for (i = 0; i < h->nrec; i++)
+    {
+       rec = &h->rec[i]; 
+       if (rec->sz == -1)
+           continue;
+       if (rec->off < off)
+           rec->off += (sz - newsz);
+    }
+    h->free += (sz - newsz);
+    h->rec[t].off = newoff;
+    h->rec[t].sz = newsz;
+}
+
+void dml_update_cur(struct dql_cursor *cur, union dml_value *values)
+{
+    struct dml_rec rec;
+    char *blk;
+
+    dml_r(&rec, values, &cur->r->desc);
+
+    blk = b_get(&cur->r->f, cur->b);
+
+    blk_ur(blk, cur->t, rec.r, rec.sz);
+
+    SET_DIRTY(B_BUF(blk));
+    b_put(blk);
+
+    dml_rfree(&rec);
+}
+
 int dml_update(char *rname, union dml_value *values, struct dml_where *w)
 {
     struct dd_rel_m *rel;
     struct dd_attrdesc *a, *at;
     struct d_datum_h *v;
-    struct dbf_it it;
-    struct dbf f;
-    int size, vaoff, len, i;
-    char *r, *nr, *p;
-    char fn[256], *buf;
-    struct dml_rec rec;
+    struct dql_cursor cur;
+    struct dql_tuple t;
 
     if ( !(rel=dd_get(rname)))
     {
@@ -382,44 +426,42 @@ int dml_update(char *rname, union dml_value *values, struct dml_where *w)
         return E_ATTR_NOT_FOUND;
     }
 
-    f_it(&rel->f, &it);
-    while ( (r = f_itnext(&it)) != 0)
+    dql_cursor_create(&cur, rname);
+    if ( 0 != dql_cursor_open(&cur))
     {
-        v = db_attr_val(at->pos, r, &rel->desc);
+        return E_REL_NOT_FOUND;
+    }
+
+    while ( dql_cursor_fetch(&t, &cur) == 0 )
+    {
+        v = db_attr_val(at->pos, t.t, &rel->desc);
 
         switch (at->domain)
         {
             case DOMAIN_INTEGER:
                 if (w->v.i_val == v->v.i_val) 
                 {
-                    dml_r(&rec, values, &rel->desc);
-                    f_ur(&it, rec.r, rec.sz);
-                    dml_rfree(&rec);
+                    dml_update_cur(&cur, values);
                 }
                 break;
             case DOMAIN_FLOAT:
                 if (w->v.f_val == v->v.f_val) 
                 {
-                    dml_r(&rec, values, &rel->desc);
-                    f_ur(&it, rec.r, rec.sz);
-                    dml_rfree(&rec);
+                    dml_update_cur(&cur, values);
                 }
                 break;
             case DOMAIN_VARCHAR:
                 if (strcmp(w->v.v_val, v->v.v_val) == 0) 
                 {
-                    dml_r(&rec, values, &rel->desc);
-                    f_ur(&it, rec.r, rec.sz);
-                    dml_rfree(&rec);
+                    dml_update_cur(&cur, values);
                 }
-                free(buf);
                 break;
         }
 
         d_hfree(v);
     }
 
-    f_itfree(&it);
+    dql_cursor_close(&cur);
 
     return 0;
 }

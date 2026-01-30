@@ -8,6 +8,7 @@
 #include "file.h"
 #include "datadict.h"
 #include "data.h"
+#include "buf.h"
 
 struct d_datum_h *db_attr_val(int pos, char *r, struct dd_reldesc *d)
 {
@@ -129,6 +130,10 @@ void ddl_create_go(struct ddl_create *c)
     sprintf(tpath, "%s%s.rel", db_path, c->name);
     f_crt(&f, tpath);
     f_close(&f);
+
+    /* add to datadict in memory */
+    dd_add(c->name);
+
 }
 
 void ddl_drop(char *name)
@@ -207,6 +212,41 @@ void dml_rfree(struct dml_rec *r)
     free(r->r);
 }
 
+void db_nr(struct dbf *f, char *r, int size)
+{
+    char *b, *p;
+    int i;
+
+    for (i = 1; i < f->hdr->blks; i++) {
+        b = b_get(f, i);
+        p = b_nr(b, size);
+        if (p != 0)
+        {
+            memcpy(p, r, size);
+
+            SET_DIRTY(B_BUF(b));
+            b_put(b);
+
+            return;
+        }
+        b_put(b);
+    }
+
+    /* alloc new block */
+    b = b_get(f, i);
+
+    f_binit(b);
+    p = b_nr(b, size);
+    memcpy(p, r, size);
+
+    SET_DIRTY(B_BUF(b));
+    b_put(b);
+
+    f->hdr->blks++;
+
+    free(b);
+}
+
 int dml_insert(char *rname, union dml_value *values)
 {
     struct dml_rec r;
@@ -219,7 +259,7 @@ int dml_insert(char *rname, union dml_value *values)
 
     dml_r(&r, values, &rel->desc);
 
-    f_nr(&rel->f, r.r, r.sz);
+    db_nr(&rel->f, r.r, r.sz);
 
     dml_rfree(&r);
 
@@ -342,3 +382,102 @@ int dml_update(char *rname, union dml_value *values, struct dml_where *w)
 
     return 0;
 }
+
+
+void dql_cursor_create(struct dql_cursor *cur, char *rname)
+{
+    cur->rname = rname;
+}
+
+int dql_cursor_open(struct dql_cursor *cur)
+{
+    struct dd_rel_m *r;
+
+    if ( (r = dd_get(cur->rname)) == 0)
+    {
+        return E_REL_NOT_FOUND;
+    }
+
+    cur->r = r;
+    cur->b = 1;
+    cur->t = 0;
+
+    return 0;
+}
+
+int dql_cursor_fetch_inb(char *blk,
+        struct dql_tuple *t, struct dql_cursor *cur)
+{
+    struct dbf_blkhdr *bh;
+
+    bh = (struct dbf_blkhdr *) blk;
+    while (cur->t < bh->nrec)
+    {
+        if (bh->rec[cur->t].sz == -1)
+        {
+            /* deleted */
+            cur->t++;
+            continue;
+        }
+        
+        t->t = blk + bh->rec[cur->t].off;
+        t->desc = &cur->r->desc;
+
+        cur->t++;
+        return 0;
+    }
+
+    return 1;
+}
+
+int dql_cursor_fetch(struct dql_tuple *t, struct dql_cursor *cur)
+{
+    char *blk;
+
+    blk = b_get(&cur->r->f, cur->b);
+    /* blk already pinned */
+    if (0 == dql_cursor_fetch_inb(blk, t, cur))
+    {
+        b_put(blk);
+
+        return 0;
+    }
+
+    b_unp(blk);
+    b_put(blk);
+
+    do {
+
+        blk = b_get(&cur->r->f, cur->b);
+
+        if (0 == dql_cursor_fetch_inb(blk, t, cur))
+        {
+            b_pin(blk);
+            b_put(blk);
+
+            return 0;
+        }
+
+        b_put(blk);
+
+        cur->b++;
+        cur->t = 0;
+
+    } while (cur->b < cur->r->f.hdr->blks);
+
+    return 1;
+
+}
+
+void dql_cursor_close(struct dql_cursor *cur)
+{
+    char *blk;
+
+    if (cur->b < cur->r->f.hdr->blks)
+    {
+        blk = b_get(&cur->r->f, cur->b);
+        b_unp(blk);
+        b_put(blk);
+    }
+}
+

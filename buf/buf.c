@@ -1,14 +1,47 @@
 #include <string.h>
+#include <stdio.h>
 
 #include "buf.h"
 
 void b_init()
 {
+    memset(buffer, 0, sizeof(buffer));
 }
 
 void b_sync()
 {
     int i;
+    struct buf* b;
+
+    for (i = 0; i < BUF_SZ; i++)
+    {
+        b = &buffer[i];
+
+        if (B_EMPTY(b))
+            continue;
+
+        if (!IS_DIRTY(b))
+            continue;
+
+        b_fw(B_BLK(b));
+    }
+}
+
+void b_info()
+{
+    int i;
+    struct buf* b;
+
+    puts("buffer:");
+    for (i = 0; i < BUF_SZ; i++)
+    {
+        b = &buffer[i];
+
+        printf("%d:(%d,%c,%c)\n",
+                i, b->b, 
+                (B_EMPTY(b) ? 'E' : ' '),
+                (IS_DIRTY(b) ? 'D' : ' '));
+    }
 }
 
 struct buf *b_fill(struct buf *p, struct dbf *f, int b)
@@ -41,7 +74,7 @@ char *b_get(struct dbf *f, int b)
         if (p->f == f && p->b == b)
         {
             p->ref++;
-            B_BLK(p);
+            return B_BLK(p);
         }
     }
 
@@ -50,7 +83,7 @@ char *b_get(struct dbf *f, int b)
     {
         p = &buffer[i];
         
-        if (p->f == 0)
+        if (B_EMPTY(p))
         {
             return B_BLK(b_fill(p, f, b));
         }

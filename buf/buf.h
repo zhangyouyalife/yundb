@@ -25,10 +25,16 @@ char blocks[BLK_SZ * BUF_SZ];
 #define SET_DIRTY(b)    (b->flag |= BF_DIRTY)
 #define CLR_DIRTY(b)    (b->flag &= (~BF_DIRTY))
 
+#define B_EMPTY(b)      ((b)->f == 0)
+
 char *b_get(struct dbf *f, int b);
 void b_put(char *b);
 void b_pin(char *b);
 void b_unp(char *b);
 void b_fw(char *b);
+
+void b_init();
+void b_sync();
+void b_info();
 
 #endif

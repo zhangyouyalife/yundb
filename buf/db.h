@@ -62,6 +62,23 @@ int dml_delete(char *rel, struct dml_where *w);
 
 int dml_update(char *rel, union dml_value *values, struct dml_where *w);
 
+struct dql_tuple {
+    char *t;
+    struct dd_reldesc *desc;
+};
+
+struct dql_cursor {
+    char *rname;
+    struct dd_rel_m *r;
+    uint32_t    b;
+    uint16_t    t;
+};
+
+void dql_cursor_create(struct dql_cursor *cur, char *rname);
+int dql_cursor_open(struct dql_cursor *cur);
+int dql_cursor_fetch(struct dql_tuple *t, struct dql_cursor *c);
+void dql_cursor_close(struct dql_cursor *cur);
+
 #define E_REL_NOT_FOUND 1
 #define E_ATTR_NOT_FOUND 2
 

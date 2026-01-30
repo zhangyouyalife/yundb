@@ -12,6 +12,7 @@
 #include "db.h"
 #include "datadict.h"
 #include "data.h"
+#include "buf.h"
 
 #define DB_PATH         "./database/"
 
@@ -117,43 +118,34 @@ void insert_record()
 void list_records(char *rname)
 {   
     int i;
-    struct dd_rel_m *rel;
-    struct dbf_it it;
-    char *r;
     char val[256];
     struct d_datum_h *v;
+    struct dql_cursor cur;
+    struct dql_tuple t;
 
-    /* printf("To find relation [%s]\n", rname); */
-    if ( (rel = dd_get(rname)) )
-    {
-        /* metadata found */
-        /* printf("Found [%s]\n", rd.name); */
-        /*printf("It has %d atrributes\n", rd.nattr);
-        for (i = 0; i < rd.nattr; i++)
-        {
-            printf("%s\n", rd.attrs[i].name);
-        } */
-        /* show data */
         puts("===");
         puts(rname);
         puts("===");
-        f_it(&rel->f, &it);
-        while ( (r = f_itnext(&it)) != 0)
+        dql_cursor_create(&cur, rname);
+        if (0 != dql_cursor_open(&cur) )
         {
-            for (i = 0; i < rel->desc.nattr; i++)
+            perror("list_records dql_cursor_open");
+            return;
+        }
+
+        while ( dql_cursor_fetch(&t, &cur)  == 0)
+        {
+            
+            for (i = 0; i < t.desc->nattr; i++)
             {
-                v = db_attr_val(i, r, &rel->desc);
-                printf("%s: %s\n", rel->desc.attrs[i].name, d_text(val, v));
+                v = db_attr_val(i, t.t, t.desc);
+                printf("%s: %s\n", t.desc->attrs[i].name, d_text(val, v));
                 d_hfree(v);
             }
+
             puts("---");
         }
-        f_itfree(&it);
-    }
-    else
-    {
-        puts("Relation not found");
-    }
+        dql_cursor_close(&cur);
 }
 
 void delete_record(char *id)
@@ -249,6 +241,7 @@ int main(int argc, char** argv)
     }
 
     dd_init();
+    b_init();
 
     switch(op)
     {
@@ -272,6 +265,9 @@ int main(int argc, char** argv)
             exit(2);
     }
 
+    //b_info();
+
+    b_sync();
     dd_free();
 
     exit(0);

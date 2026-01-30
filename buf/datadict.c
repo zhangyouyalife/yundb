@@ -439,3 +439,8 @@ struct dd_rel_m *dd_get(char *rname)
     return 0;
 }
 
+void dd_add(char *rname)
+{
+    ll_add(&datadict, dd_relmget(rname)); 
+}
+

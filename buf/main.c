@@ -123,29 +123,29 @@ void list_records(char *rname)
     struct dql_cursor cur;
     struct dql_tuple t;
 
-        puts("===");
-        puts(rname);
-        puts("===");
-        dql_cursor_create(&cur, rname);
-        if (0 != dql_cursor_open(&cur) )
+    puts("===");
+    puts(rname);
+    puts("===");
+    dql_cursor_create(&cur, rname);
+    if (0 != dql_cursor_open(&cur) )
+    {
+        perror("list_records dql_cursor_open");
+        return;
+    }
+
+    while ( dql_cursor_fetch(&t, &cur)  == 0)
+    {
+        
+        for (i = 0; i < t.desc->nattr; i++)
         {
-            perror("list_records dql_cursor_open");
-            return;
+            v = db_attr_val(i, t.t, t.desc);
+            printf("%s: %s\n", t.desc->attrs[i].name, d_text(val, v));
+            d_hfree(v);
         }
 
-        while ( dql_cursor_fetch(&t, &cur)  == 0)
-        {
-            
-            for (i = 0; i < t.desc->nattr; i++)
-            {
-                v = db_attr_val(i, t.t, t.desc);
-                printf("%s: %s\n", t.desc->attrs[i].name, d_text(val, v));
-                d_hfree(v);
-            }
-
-            puts("---");
-        }
-        dql_cursor_close(&cur);
+        puts("---");
+    }
+    dql_cursor_close(&cur);
 }
 
 void delete_record(char *id)

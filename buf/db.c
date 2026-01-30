@@ -132,7 +132,7 @@ void ddl_create_go(struct ddl_create *c)
     f_close(&f);
 
     /* add to datadict in memory */
-    dd_add(c->name);
+    //dd_add(c->name);
 
 }
 
@@ -243,9 +243,43 @@ void db_nr(struct dbf *f, char *r, int size)
     b_put(b);
 
     f->hdr->blks++;
-
-    free(b);
 }
+
+
+void db_dr(struct dql_cursor *cur)
+{
+    struct dbf_blkhdr *h;
+    struct dbf_rec *r;
+    int off, sz;
+    int i, t;
+    char *blk;
+
+    blk = b_get(&cur->r->f, cur->b);
+
+    h = (struct dbf_blkhdr*) blk;
+    t = cur->t;
+    off = h->rec[t].off;
+    sz = h->rec[t].sz;
+
+    memmove(blk + h->free + sz, 
+            blk + h->free,
+            off - h->free);
+
+    for (i = 0; i < h->nrec; i++)
+    {
+       r = &h->rec[i]; 
+       if (r->sz == -1)
+           continue;
+       if (r->off < off)
+           r->off += sz;
+    }
+    h->free += sz;
+    h->rec[t].sz = -1;
+   
+    SET_DIRTY(B_BUF(blk)); 
+    b_put(blk);
+}
+
 
 int dml_insert(char *rname, union dml_value *values)
 {
@@ -270,9 +304,11 @@ int dml_delete(char *rname, struct dml_where *w)
 {
     struct dd_rel_m *rel;
     struct dd_attrdesc *at;
+    int i;
+    char val[256];
     struct d_datum_h *v;
-    struct dbf_it it;
-    char *r;
+    struct dql_cursor cur;
+    struct dql_tuple t;
 
     if ( !(rel = dd_get(rname)) )
     {
@@ -284,37 +320,42 @@ int dml_delete(char *rname, struct dml_where *w)
         return E_ATTR_NOT_FOUND;
     }
 
-    f_it(&rel->f, &it);
-    while ( (r = f_itnext(&it)) != 0)
+    dql_cursor_create(&cur, rname);
+    if (0 != dql_cursor_open(&cur) )
     {
-        v = db_attr_val(at->pos, r, &rel->desc);
+        perror("list_records dql_cursor_open");
+        return E_REL_NOT_FOUND;
+    }
 
-        switch (v->domain)
-        {
-            case DOMAIN_INTEGER:
-                if (w->v.i_val == v->v.i_val) 
-                {
-                    f_dr(&it);
-                }
-                break;
-            case DOMAIN_FLOAT:
-                if (w->v.f_val == v->v.f_val) 
-                {
-                    f_dr(&it);
-                }
-                break;
-            case DOMAIN_VARCHAR:
-                if (strcmp(w->v.v_val, v->v.v_val) == 0) 
-                {
-                    f_dr(&it);
-                }
-                break;
-        }
+    while ( dql_cursor_fetch(&t, &cur)  == 0)
+    {
+        v = db_attr_val(at->pos, t.t, &rel->desc);
+        
+            switch (v->domain)
+            {
+                case DOMAIN_INTEGER:
+                    if (w->v.i_val == v->v.i_val) 
+                    {
+                        db_dr(&cur);
+                    }
+                    break;
+                case DOMAIN_FLOAT:
+                    if (w->v.f_val == v->v.f_val) 
+                    {
+                        db_dr(&cur);
+                    }
+                    break;
+                case DOMAIN_VARCHAR:
+                    if (strcmp(w->v.v_val, v->v.v_val) == 0) 
+                    {
+                        db_dr(&cur);
+                    }
+                    break;
+            }
 
         d_hfree(v);
     }
-
-    f_itfree(&it);
+    dql_cursor_close(&cur);
 
     return 0;
 }
@@ -400,7 +441,7 @@ int dql_cursor_open(struct dql_cursor *cur)
 
     cur->r = r;
     cur->b = 1;
-    cur->t = 0;
+    cur->t = -1;
 
     return 0;
 }
@@ -410,6 +451,7 @@ int dql_cursor_fetch_inb(char *blk,
 {
     struct dbf_blkhdr *bh;
 
+    cur->t++;
     bh = (struct dbf_blkhdr *) blk;
     while (cur->t < bh->nrec)
     {
@@ -423,7 +465,6 @@ int dql_cursor_fetch_inb(char *blk,
         t->t = blk + bh->rec[cur->t].off;
         t->desc = &cur->r->desc;
 
-        cur->t++;
         return 0;
     }
 
@@ -461,7 +502,7 @@ int dql_cursor_fetch(struct dql_tuple *t, struct dql_cursor *cur)
         b_put(blk);
 
         cur->b++;
-        cur->t = 0;
+        cur->t = -1;
 
     } while (cur->b < cur->r->f.hdr->blks);
 

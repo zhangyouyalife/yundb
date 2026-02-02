@@ -1,8 +1,10 @@
-main: main.o db.o buf.o datadict.o file.o tuple.o data.o list.o
+main: main.o db.o buf.o datadict.o file.o blk.o tuple.o data.o list.o
 
 data.o: data.c data.h
 
 tuple.o: tuple.c tuple.h
+
+blk.o: blk.c blk.h
 
 file.o: file.c file.h conf.h
 

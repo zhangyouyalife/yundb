@@ -5,6 +5,7 @@
 
 #include "exitcode.h"
 #include "db.h"
+#include "blk.h"
 #include "file.h"
 #include "datadict.h"
 #include "data.h"
@@ -214,15 +215,15 @@ void dml_rfree(struct dml_rec *r)
 
 void db_nr(struct dbf *f, char *r, int size)
 {
-    char *b, *p;
-    int i;
+    char *b;
+    int i, tn;
 
     for (i = 1; i < f->hdr->blks; i++) {
         b = b_get(f, i);
-        p = b_nr(b, size);
-        if (p != 0)
+        tn = blk_nt(b, size);
+        if (tn != -1)
         {
-            memcpy(p, r, size);
+            memcpy(b + BLK_GET(b, tn)->off, r, size);
 
             SET_DIRTY(B_BUF(b));
             b_put(b);
@@ -235,9 +236,8 @@ void db_nr(struct dbf *f, char *r, int size)
     /* alloc new block */
     b = b_get(f, i);
 
-    f_binit(b);
-    p = b_nr(b, size);
-    memcpy(p, r, size);
+    blk_init(b);
+    memcpy(b + BLK_GET(b, tn)->off, r, size);
 
     SET_DIRTY(B_BUF(b));
     b_put(b);
@@ -248,33 +248,11 @@ void db_nr(struct dbf *f, char *r, int size)
 
 void db_dr(struct dql_cursor *cur)
 {
-    struct dbf_blkhdr *h;
-    struct dbf_rec *r;
-    int off, sz;
-    int i, t;
     char *blk;
 
     blk = b_get(&cur->r->f, cur->b);
 
-    h = (struct dbf_blkhdr*) blk;
-    t = cur->t;
-    off = h->rec[t].off;
-    sz = h->rec[t].sz;
-
-    memmove(blk + h->free + sz, 
-            blk + h->free,
-            off - h->free);
-
-    for (i = 0; i < h->nrec; i++)
-    {
-       r = &h->rec[i]; 
-       if (r->sz == -1)
-           continue;
-       if (r->off < off)
-           r->off += sz;
-    }
-    h->free += sz;
-    h->rec[t].sz = -1;
+    blk_dt(blk, cur->t);
    
     SET_DIRTY(B_BUF(blk)); 
     b_put(blk);
@@ -360,36 +338,6 @@ int dml_delete(char *rname, struct dml_where *w)
     return 0;
 }
 
-void blk_ur(char *blk, uint16_t t, char *r, int newsz)
-{
-    struct dbf_blkhdr *h;
-    struct dbf_rec *rec;
-    int off, sz, newoff;
-    int i;
-
-    h = (struct dbf_blkhdr*) blk;
-
-    off = h->rec[t].off;
-    sz = h->rec[t].sz;
-    newoff = off + sz - newsz;
-
-    memmove(blk + h->free + sz - newsz, 
-            blk + h->free,
-            off - h->free);
-    memcpy(blk + newoff, r, newsz);
-
-    for (i = 0; i < h->nrec; i++)
-    {
-       rec = &h->rec[i]; 
-       if (rec->sz == -1)
-           continue;
-       if (rec->off < off)
-           rec->off += (sz - newsz);
-    }
-    h->free += (sz - newsz);
-    h->rec[t].off = newoff;
-    h->rec[t].sz = newsz;
-}
 
 void dml_update_cur(struct dql_cursor *cur, union dml_value *values)
 {
@@ -400,7 +348,7 @@ void dml_update_cur(struct dql_cursor *cur, union dml_value *values)
 
     blk = b_get(&cur->r->f, cur->b);
 
-    blk_ur(blk, cur->t, rec.r, rec.sz);
+    blk_ut(blk, cur->t, rec.r, rec.sz);
 
     SET_DIRTY(B_BUF(blk));
     b_put(blk);
@@ -491,20 +439,22 @@ int dql_cursor_open(struct dql_cursor *cur)
 int dql_cursor_fetch_inb(char *blk,
         struct dql_tuple *t, struct dql_cursor *cur)
 {
-    struct dbf_blkhdr *bh;
+    struct blk_hdr *bh;
+    struct blk_tuple *bt;
 
     cur->t++;
-    bh = (struct dbf_blkhdr *) blk;
-    while (cur->t < bh->nrec)
+    bh = (struct blk_hdr *) blk;
+    while (cur->t < bh->ntuple)
     {
-        if (bh->rec[cur->t].sz == -1)
+        bt = BLK_GET(blk, cur->t);
+        if (BLK_ISNONE(bt))
         {
             /* deleted */
             cur->t++;
             continue;
         }
         
-        t->t = blk + bh->rec[cur->t].off;
+        t->t = blk + bt->off;
         t->desc = &cur->r->desc;
 
         return 0;

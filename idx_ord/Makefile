@@ -1,3 +1,7 @@
+defaut: createdb main
+
+createdb: createdb.o db.o buf.o datadict.o file.o blk.o tuple.o data.o list.o
+
 main: main.o db.o buf.o datadict.o file.o blk.o tuple.o data.o list.o
 
 data.o: data.c data.h
@@ -15,4 +19,6 @@ datadict.o: datadict.c datadict.h
 buf.o: buf.c buf.h
 
 list.o: list.c list.h
+
+createdb.o: createdb.c datadict.h
 

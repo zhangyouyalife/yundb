@@ -82,6 +82,7 @@ struct linkhead datadict;
 
 void dd_init();
 void dd_free();
+void dd_sync();
 struct dd_rel_m *dd_get(char *rname);
 void dd_add(char *rname);
 

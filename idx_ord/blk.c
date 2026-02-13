@@ -101,3 +101,18 @@ void blk_ut(char *blk, int tn, char *newt, int newsz)
     h->tuples[tn].off = newoff;
     h->tuples[tn].sz = newsz;
 }
+
+int blk_freespace(char *blk)
+{
+    int free;
+    int tn;
+    struct blk_hdr *bh;
+
+    bh = (struct blk_hdr *) blk;
+
+    free = bh->free 
+        - sizeof(struct blk_hdr)
+        - sizeof(struct blk_tuple) * bh->ntuple;
+
+    return free;
+}

@@ -133,8 +133,9 @@ void ddl_create_go(struct ddl_create *c)
 
     /* add to datadict in memory */
     b_sync();
-    dd_add(c->name);
+    dd_sync();
 
+    dd_add(c->name);
 }
 
 void ddl_drop(char *name)
@@ -142,6 +143,7 @@ void ddl_drop(char *name)
     
 }
 
+/* create tuple */
 void dml_r(struct dml_rec *rec, 
         union dml_value *values, struct dd_reldesc *d)
 {
@@ -348,10 +350,20 @@ void dml_update_cur(struct dql_cursor *cur, union dml_value *values)
 
     blk = b_get(&cur->r->f, cur->b);
 
-    blk_ut(blk, cur->t, rec.r, rec.sz);
+    if (rec.sz - BLK_GET(blk, cur->t)->sz < blk_freespace(blk))
+    {
+        /* update in block */
+        blk_ut(blk, cur->t, rec.r, rec.sz);
 
-    SET_DIRTY(B_BUF(blk));
-    b_put(blk);
+        SET_DIRTY(B_BUF(blk));
+        b_put(blk);
+    }
+    else
+    {
+        /* delete and insert */
+        db_dr(cur);
+        db_nr(&cur->r->f, rec.r, rec.sz);
+    }
 
     dml_rfree(&rec);
 }

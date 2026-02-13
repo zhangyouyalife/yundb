@@ -79,6 +79,7 @@ int dd_attrdesc_get(struct dd_attrdesc ads[], char *rname)
     {
         attr = (struct dd_attr *) r;
         t_varchar(nm, &attr->rel, r);
+        /*printf("dd_attrdesc_get: %s\n", nm); */
         if (strcmp(nm, rname) == 0)
         {
             found++;
@@ -418,6 +419,22 @@ void dd_free()
     ll_travel(&datadict, dd_relmfree);
     ll_free(&datadict);
 }
+
+
+void dd_dbf_sync(void *relm)
+{
+    struct dd_rel_m *r;
+
+    r = (struct dd_rel_m *) relm;
+
+    f_wb(&r->f, 0, r->f.blk0);
+}
+
+void dd_sync()
+{
+    ll_travel(&datadict, dd_dbf_sync);
+}
+
 
 struct dd_rel_m *dd_get(char *rname)
 {

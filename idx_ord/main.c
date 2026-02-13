@@ -293,9 +293,21 @@ struct cmd *cmd_read()
 void print_dd(void *d)
 {
     struct dd_rel_m *m;
+    struct dd_attrdesc *a;
+    int i;
 
     m = (struct dd_rel_m *)d;
-    printf("(%s, fd=%d)\n", m->desc.name, m->f.fd);
+    printf("(%s, nattr=%d, org=%d, fd=%d)\n",
+            m->desc.name, 
+            m->desc.nattr,
+            m->desc.forg,
+            m->f.fd);
+    for (i = 0; i < m->desc.nattr; i++)
+    {
+        a = &m->desc.attrs[i];
+        printf("\t%s\n", a->name);
+    }
+
 }
 
 int cmd_exec(struct cmd *c)

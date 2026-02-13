@@ -14,8 +14,6 @@
 #include "data.h"
 #include "buf.h"
 
-#define DB_PATH         "./database/"
-
 struct instructor
 {
     char id[5 + 1];
@@ -98,6 +96,13 @@ void RecordInput(struct instructor *r)
     input_double(&r->salary);
 }
 
+void clear_input()
+{
+    int c;
+
+    while ((c = getchar()) != '\n' && c != EOF) ;
+}
+
 void insert_record()
 {
     struct instructor ins;
@@ -113,6 +118,8 @@ void insert_record()
     v[3].f_val = ins.salary;
     dml_insert("instructor", v);
     puts("OK");
+
+    clear_input();
 }
 
 void list_records(char *rname)
@@ -180,104 +187,193 @@ void update_record(char *id)
     dml_update("instructor", v, &w);
 
     puts("OK");
+
+    clear_input();
 }
 
 #define OP_UPDATE       1
 #define OP_LIST         2
-#define OP_CREATEFILE   3
 #define OP_INSERT       4
 #define OP_DELETE       5
 #define OP_CREATEINS    6
+#define OP_EXIT         7
+#define OP_BUFINFO      8
+#define OP_DATADICT     9
+
+struct cmd
+{
+    uint8_t op;
+};
+
+struct cmd_list
+{
+    uint8_t op;
+    char rel[256];
+};
+
+struct cmd1
+{
+    uint8_t op;
+    char a1[256];
+};
+
+char cmdbuf[256];
+
+void cmd_free(struct cmd *c)
+{
+    free(c);
+}
+
+struct cmd *cmd_read()
+{
+    struct cmd *c;
+
+    printf("> ");
+    if (NULL == fgets(cmdbuf, 256, stdin))
+    {
+        c = malloc(sizeof(struct cmd));
+        c->op = OP_EXIT;
+        return c;
+    }
+
+    if (strncmp(cmdbuf, "\\b", 2) == 0)
+    {
+        c = malloc(sizeof(struct cmd));
+        c->op = OP_BUFINFO;
+        return c;
+    }
+    if (strncmp(cmdbuf, "\\dd", 3) == 0)
+    {
+        c = malloc(sizeof(struct cmd));
+        c->op = OP_DATADICT;
+        return c;
+    }
+
+    if (strncmp(cmdbuf, "create", 6) == 0)
+    {
+        c = malloc(sizeof(struct cmd));
+        c->op = OP_CREATEINS;
+        return c;
+    }
+
+    if (strncmp(cmdbuf, "list", 4) == 0)
+    {
+        c = malloc(sizeof(struct cmd_list));
+        c->op = OP_LIST;
+        sscanf(cmdbuf, "list %s\n", ((struct cmd_list *)c)->rel);
+        return c;
+    }
+
+    if (strncmp(cmdbuf, "i", 1) == 0)
+    {
+        c = malloc(sizeof(struct cmd));
+        c->op = OP_INSERT;
+        return c;
+    }
+
+    if (strncmp(cmdbuf, "d", 1) == 0)
+    {
+        c = malloc(sizeof(struct cmd1));
+        c->op = OP_DELETE;
+        sscanf(cmdbuf, "d %s\n", ((struct cmd1 *)c)->a1);
+        return c;
+    }
+
+    if (strncmp(cmdbuf, "u", 1) == 0)
+    {
+        c = malloc(sizeof(struct cmd1));
+        c->op = OP_UPDATE;
+        sscanf(cmdbuf, "u %s\n", ((struct cmd1 *)c)->a1);
+        return c;
+    }
+
+    return 0;
+}
+
+void print_dd(void *d)
+{
+    struct dd_rel_m *m;
+
+    m = (struct dd_rel_m *)d;
+    printf("(%s, fd=%d)\n", m->desc.name, m->f.fd);
+}
+
+int cmd_exec(struct cmd *c)
+{
+    switch (c->op)
+    {
+        case OP_BUFINFO:
+            b_info();
+            break;
+
+        case OP_CREATEINS:
+            create_instructor_rel();
+            break;
+
+        case OP_LIST:
+            list_records(((struct cmd_list *)c)->rel);
+            break;
+
+        case OP_DATADICT:
+            ll_travel(&datadict, print_dd);
+            break;
+
+        case OP_INSERT:
+            insert_record();
+            break;
+
+        case OP_DELETE:
+            delete_record(((struct cmd1*)c)->a1);
+            break;
+        case OP_UPDATE:
+            update_record(((struct cmd1*)c)->a1);
+            break;
+
+        default:
+            return 1;
+    }
+
+    return 0;
+}
 
 int main(int argc, char** argv)
 {
     int ch;
     int op;
     char relname[256];
-/*
-    printf("sizeof(int) = %ld\n", sizeof(int));
-    printf("sizeof(pointer) = %ld\n", sizeof(char *));
-    printf("blocks: %p\n", blocks);
-    printf("buffer: %p\n", buffer);
+    struct cmd *cmd;
 
-    printf("block 2: %lx\n", (&buffer[1]) - buffer);
-    printf("block 2: %lx\n", BLK_SZ * ((&buffer[1]) - buffer));
-    printf("block 2: %p\n", B_BLK(&buffer[1]));
-    printf("buffer 2: %p\n", B_BUF(B_BLK(&buffer[1])));
-
-    exit(0);
-    */
-    strcpy(db_path, DB_PATH);
-
-    while ((ch = getopt(argc, argv, "fidulr:c")) != -1)
+    if (argc < 2)
     {
-        switch (ch) {
-            case 'f':
-                op = OP_CREATEFILE;
-                break;
-            case 'u':
-                op = OP_UPDATE;
-                break;
-            case 'i':
-                op = OP_INSERT;
-                break;
-            case 'd':
-                op = OP_DELETE;
-                break;
-            case 'l':
-                op = OP_LIST;
-                break;
-            case 'r':
-                memset(relname, 0, 256);
-                strncpy(relname, optarg, 255);
-                break;
-            case 'c':
-                op = OP_CREATEINS;
-                break;
-            case '?':
-            default:
-                usage();
-        }
+        puts("Usage:");
+        puts("\topendb <db_path>");
+        exit(1);
     }
-    argc -= optind;
-    argv += optind;
-/*
-    printf("sizeof(double) = %lu\n", sizeof(double));
-    printf("sizeof(record) = %lu\n", sizeof(struct instructor));
-    printf("BLOCK SIZE = %d\n", BLK_SZ);
-*/
-    if (op == OP_CREATEFILE)
-    {
-        dd_create(db_path);
-        exit(0);
-    }
+
+    strcpy(db_path, argv[1]);
 
     dd_init();
     b_init();
 
-    switch(op)
-    {
-        case OP_LIST:
-            list_records(relname);
-            break;
-        case OP_INSERT:
-            insert_record();
-            break;
-        case OP_DELETE:
-            delete_record(argv[0]);
-            break;
-        case OP_UPDATE:
-            update_record(argv[0]);
-            break;
-        case OP_CREATEINS:
-            create_instructor_rel();
-            break;
-        default:
-            puts("Invalid operation\n");
-            exit(2);
-    }
 
-    b_info();
+    while (1)
+    {
+        cmd = cmd_read();
+        if (0 == cmd)
+        {
+            puts("invalid command");
+            continue;
+        }
+
+        if (cmd->op == OP_EXIT)
+        {
+            cmd_free(cmd);
+            break;
+        }
+           
+        cmd_exec(cmd);
+        cmd_free(cmd);
+    }
 
     b_sync();
     dd_free();

@@ -1,5 +1,6 @@
 main
 createdb
 database/
+demo/
 *.swp
 

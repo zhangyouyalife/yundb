@@ -4,7 +4,7 @@
 #include "conf.h"
 #include "file.h"
 
-#define BUF_SZ  100
+#define BUF_SZ  20
 
 #define BF_DIRTY    1
 

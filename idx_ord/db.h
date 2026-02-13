@@ -71,7 +71,7 @@ struct dql_cursor {
     char *rname;
     struct dd_rel_m *r;
     uint32_t    b;
-    uint16_t    t;
+    int16_t    t;
 };
 
 void dql_cursor_create(struct dql_cursor *cur, char *rname);

@@ -37,9 +37,10 @@ void b_info()
     {
         b = &buffer[i];
 
-        printf("%d:(%d,%c,%c)\n",
-                i, b->b, 
-                (B_EMPTY(b) ? 'E' : ' '),
+        printf("%d:(%d,%d,%c)\n",
+                i, 
+                b->b, 
+                (B_EMPTY(b) ? -1 : b->f->fd),
                 (IS_DIRTY(b) ? 'D' : ' '));
     }
 }

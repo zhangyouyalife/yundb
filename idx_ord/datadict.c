@@ -336,7 +336,7 @@ struct dd_rel_m *dd_relmget(char *rname)
 
     dd_reldesc_get(&r->desc, rname);
 
-    sprintf(fn, "%s%s.rel", db_path, rname);
+    sprintf(fn, "%s/%s.rel", db_path, rname);
     f_open(&r->f, fn);
 
     return r;
@@ -373,14 +373,14 @@ void dd_init()
 
     ll_init(&datadict);
 
-    sprintf(s, "%s%s.rel", db_path, "relation");
+    sprintf(s, "%s/%s.rel", db_path, "relation");
     f_open(&relation, s);
-    sprintf(s, "%s%s.rel", db_path, "attribute");
+    sprintf(s, "%s/%s.rel", db_path, "attribute");
     f_open(&attribute, s);
 
     dd_reldesc_get(&rd, REL_NAME);
 
-    sprintf(s, "%s%s.rel", db_path, REL_NAME);
+    sprintf(s, "%s/%s.rel", db_path, REL_NAME);
     f_open(&rf, s);
     f_it(&rf, &it);
 
@@ -441,6 +441,16 @@ struct dd_rel_m *dd_get(char *rname)
 
 void dd_add(char *rname)
 {
+    char s[256];
+
+    sprintf(s, "%s/%s.rel", db_path, "relation");
+    f_open(&relation, s);
+    sprintf(s, "%s/%s.rel", db_path, "attribute");
+    f_open(&attribute, s);
+
     ll_add(&datadict, dd_relmget(rname)); 
+
+    f_close(&attribute);
+    f_close(&relation);
 }
 

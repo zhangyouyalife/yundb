@@ -36,7 +36,6 @@ struct d_datum_h *db_attr_val(int pos, char *r, struct dd_reldesc *d)
     return d_btoh(&b);
 }
 
-
 void ddl_create_new(struct ddl_create *c, 
         char *name, uint16_t nattr, uint8_t forg)
 {
@@ -98,42 +97,43 @@ void ddl_create_free(struct ddl_create *c)
 
 void ddl_create_go(struct ddl_create *c)
 {
-    char *r;
     int i;
     struct ddl_attr *a;
     char tpath[256];
     struct dbf f;
+    union dml_value v[5];
 
     /* relation record */
-    if ( (r = malloc(DD_REL_RSZ(c->name))) == 0)
+    if (0 != dd_get(c->name))
     {
-        perror("db_create_go malloc failed");
-        exit(EC_M);
+        printf("%s already exists", c->name);
+        return;
     }
-    dd_rel(c->name, c->nattr, c->forg, r); 
-    f_nr(&dd_get("relation")->f, r, DD_REL_RSZ(c->name));
-    free(r);
+
+    v[0].v_val = c->name;
+    v[1].i_val = c->nattr;
+    v[2].i_val = c->forg;
+    dml_insert("relation", v);
 
     /* attribute records */
     for (i = 0, a = c->attrs; i < c->nattr; i++, a++)
     {
-        if ( (r = malloc(DD_ATTR_RSZ(c->name, a->name))) == 0)
-        {
-            perror("db_create_go malloc failed");
-            exit(EC_M);
-        }
-        dd_attr(c->name, a->name, a->domain, a->pos, a->len, r);
-        f_nr(&dd_get("attribute")->f, r, DD_ATTR_RSZ(c->name, a->name));
-        free(r);
+        v[0].v_val = c->name;
+        v[1].v_val = a->name;
+        v[2].i_val = a->domain;
+        v[3].i_val = a->pos;
+        v[4].i_val = a->len;
+        dml_insert("attribute", v);
     }
 
     /* create file */
-    sprintf(tpath, "%s%s.rel", db_path, c->name);
+    sprintf(tpath, "%s/%s.rel", db_path, c->name);
     f_crt(&f, tpath);
     f_close(&f);
 
     /* add to datadict in memory */
-    //dd_add(c->name);
+    b_sync();
+    dd_add(c->name);
 
 }
 
@@ -467,25 +467,19 @@ int dql_cursor_fetch(struct dql_tuple *t, struct dql_cursor *cur)
 {
     char *blk;
 
-    blk = b_get(&cur->r->f, cur->b);
-    /* blk already pinned */
-    if (0 == dql_cursor_fetch_inb(blk, t, cur))
+    while (cur->b < cur->r->f.hdr->blks)
     {
-        b_put(blk);
-
-        return 0;
-    }
-
-    b_unp(blk);
-    b_put(blk);
-
-    do {
-
         blk = b_get(&cur->r->f, cur->b);
+
+        if (cur->t != -1)
+        {
+            b_unp(blk);
+        }
 
         if (0 == dql_cursor_fetch_inb(blk, t, cur))
         {
             b_pin(blk);
+
             b_put(blk);
 
             return 0;
@@ -495,8 +489,8 @@ int dql_cursor_fetch(struct dql_tuple *t, struct dql_cursor *cur)
 
         cur->b++;
         cur->t = -1;
-
-    } while (cur->b < cur->r->f.hdr->blks);
+      
+    }
 
     return 1;
 
@@ -506,7 +500,7 @@ void dql_cursor_close(struct dql_cursor *cur)
 {
     char *blk;
 
-    if (cur->b < cur->r->f.hdr->blks)
+    if (cur->b < cur->r->f.hdr->blks && cur->t != -1)
     {
         blk = b_get(&cur->r->f, cur->b);
         b_unp(blk);

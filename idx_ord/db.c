@@ -220,7 +220,7 @@ void db_nr(struct dbf *f, char *r, int size)
     char *b;
     int i, tn;
     for (i = 1; i < f->hdr->blks; i++) {
-        b = b_get(f, i);
+        b = b_get(f->fd, i);
         tn = blk_nt(b, size);
         if (tn != -1)
         {
@@ -235,7 +235,7 @@ void db_nr(struct dbf *f, char *r, int size)
     }
 
     /* alloc new block */
-    b = b_get(f, i);
+    b = b_get(f->fd, i);
     blk_init(b);
     tn = blk_nt(b, size);
     memcpy(b + BLK_GET(b, tn)->off, r, size);
@@ -251,7 +251,7 @@ void db_dr(struct dql_cursor *cur)
 {
     char *blk;
 
-    blk = b_get(&cur->r->f, cur->b);
+    blk = b_get(cur->r->f.fd, cur->b);
 
     blk_dt(blk, cur->t);
    
@@ -347,7 +347,7 @@ void dml_update_cur(struct dql_cursor *cur, union dml_value *values)
 
     dml_r(&rec, values, &cur->r->desc);
 
-    blk = b_get(&cur->r->f, cur->b);
+    blk = b_get(cur->r->f.fd, cur->b);
 
     if (rec.sz - BLK_GET(blk, cur->t)->sz < blk_freespace(blk))
     {
@@ -480,7 +480,7 @@ int dql_cursor_fetch(struct dql_tuple *t, struct dql_cursor *cur)
 
     while (cur->b < cur->r->f.hdr->blks)
     {
-        blk = b_get(&cur->r->f, cur->b);
+        blk = b_get(cur->r->f.fd, cur->b);
 
         if (cur->t != -1)
         {
@@ -513,7 +513,7 @@ void dql_cursor_close(struct dql_cursor *cur)
 
     if (cur->b < cur->r->f.hdr->blks && cur->t != -1)
     {
-        blk = b_get(&cur->r->f, cur->b);
+        blk = b_get(cur->r->f.fd, cur->b);
         b_unp(blk);
         b_put(blk);
     }

@@ -2,7 +2,7 @@
 #define _BUF_
 
 #include "conf.h"
-#include "file.h"
+#include "sysfile.h"
 
 #define BUF_SZ  20
 
@@ -10,7 +10,7 @@
 
 struct buf
 {
-    struct dbf *f;
+    int fd;
     int b;
     int ref;
     int flag;
@@ -25,9 +25,10 @@ char blocks[BLK_SZ * BUF_SZ];
 #define SET_DIRTY(b)    (b->flag |= BF_DIRTY)
 #define CLR_DIRTY(b)    (b->flag &= (~BF_DIRTY))
 
-#define B_EMPTY(b)      ((b)->f == 0)
+#define B_EMPTY(b)      ((b)->fd == -1)
+#define B_SET_EMPTY(b)  ((b)->fd = -1)
 
-char *b_get(struct dbf *f, int b);
+char *b_get(int fd, int b);
 void b_put(char *b);
 void b_pin(char *b);
 void b_unp(char *b);

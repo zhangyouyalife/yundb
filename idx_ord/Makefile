@@ -1,8 +1,8 @@
 defaut: createdb main
 
-createdb: createdb.o db.o buf.o datadict.o file.o file_heap.o blk.o tuple.o data.o list.o
+createdb: createdb.o db.o datadict.o file.o file_heap.o blk.o tuple.o data.o buf.o sysfile.o list.o
 
-main: main.o db.o buf.o datadict.o file.o file_heap.o blk.o tuple.o data.o list.o
+main: main.o db.o datadict.o file.o file_heap.o blk.o tuple.o data.o buf.o sysfile.o list.o
 
 data.o: data.c data.h
 
@@ -19,6 +19,8 @@ db.o: db.c db.h datadict.h
 datadict.o: datadict.c datadict.h
 
 buf.o: buf.c buf.h
+
+sysfile.o: sysfile.c sysfile.h
 
 list.o: list.c list.h
 

@@ -5,7 +5,14 @@
 
 void b_init()
 {
+    int i;
+
     memset(buffer, 0, sizeof(buffer));
+
+    for (i = 0; i < BUF_SZ; i++)
+    {
+        B_SET_EMPTY(&buffer[i]);
+    }
 }
 
 void b_sync()
@@ -40,20 +47,20 @@ void b_info()
         printf("%d:(%d,%d,%c)\n",
                 i, 
                 b->b, 
-                (B_EMPTY(b) ? -1 : b->f->fd),
+                b->fd,
                 (IS_DIRTY(b) ? 'D' : ' '));
     }
 }
 
-struct buf *b_fill(struct buf *p, struct dbf *f, int b)
+struct buf *b_fill(struct buf *p, int fd, int b)
 {
-    p->f = f;
+    p->fd = fd;
     p->b = b;
     p->ref = 1;
     p->flag = 0;
-    if (b < f->hdr->blks)
+    if (b < sf_blks(fd))
     {
-        f_rb(f, b, B_BLK(p));
+        sf_rb(fd, b, B_BLK(p));
     } else {
         /* new blok */
         SET_DIRTY(p);
@@ -62,7 +69,7 @@ struct buf *b_fill(struct buf *p, struct dbf *f, int b)
     return p;
 }
 
-char *b_get(struct dbf *f, int b)
+char *b_get(int fd, int b)
 {
     struct buf *p;
     int i;
@@ -72,7 +79,7 @@ char *b_get(struct dbf *f, int b)
     {
         p = &buffer[i];
         
-        if (p->f == f && p->b == b)
+        if (p->fd == fd && p->b == b)
         {
             p->ref++;
             return B_BLK(p);
@@ -86,7 +93,7 @@ char *b_get(struct dbf *f, int b)
         
         if (B_EMPTY(p))
         {
-            return B_BLK(b_fill(p, f, b));
+            return B_BLK(b_fill(p, fd, b));
         }
     }
 
@@ -96,7 +103,7 @@ char *b_get(struct dbf *f, int b)
         p = &buffer[i];
         if (p->ref == 0 && !IS_DIRTY(p))
         {
-            return B_BLK(b_fill(p, f, b));
+            return B_BLK(b_fill(p, fd, b));
         }
     }
 
@@ -106,9 +113,9 @@ char *b_get(struct dbf *f, int b)
         p = &buffer[i];
         if (p->ref == 0 && IS_DIRTY(p))
         {
-            f_wb(p->f, p->b, B_BLK(p));
+            sf_wb(p->fd, p->b, B_BLK(p));
 
-            return B_BLK(b_fill(p, f, b));
+            return B_BLK(b_fill(p, fd, b));
         }
     }
 
@@ -135,11 +142,11 @@ void b_fw(char *blk)
     struct buf *b;
 
     b = B_BUF(blk);
-    printf("b_fw: %d, %d\n", b->f->fd, b->b);
+    printf("b_fw: %d, %d\n", b->fd, b->b);
 
     if (IS_DIRTY(b))
     {
-        f_wb(b->f, b->b, blk);
+        sf_wb(b->fd, b->b, blk);
         CLR_DIRTY(b);
     }
 }

@@ -9,6 +9,7 @@
 #include "data.h"
 #include "tuple.h"
 #include "file.h"
+#include "buf.h"
 
 static struct dbf  relation;
 
@@ -208,6 +209,9 @@ void dd_create(char *path)
 
     dd_crt_attribute();
 
+    b_clearfd(relation.fd);
+    b_clearfd(attribute.fd);
+
     f_close(&attribute);
     f_close(&relation);
 
@@ -350,6 +354,8 @@ void dd_relmfree(void *relm)
 
     dd_reldesc_free(&r->desc);
 
+    b_clearfd(r->f.fd);
+
     f_close(&r->f);
 
     free(relm);
@@ -381,9 +387,7 @@ void dd_init()
 
     dd_reldesc_get(&rd, REL_NAME);
 
-    sprintf(s, "%s/%s.rel", db_path, REL_NAME);
-    f_open(&rf, s);
-    f_it(&rf, &it);
+    f_it(&relation, &it);
 
     while ( (r = f_itnext(&it)) != 0)
     {
@@ -407,9 +411,11 @@ void dd_init()
     }
 
     f_itfree(&it);
-    f_close(&rf);
+
     dd_reldesc_free(&rd);
 
+    b_clearfd(attribute.fd);
+    b_clearfd(relation.fd);
     f_close(&attribute);
     f_close(&relation);
 }
@@ -427,7 +433,7 @@ void dd_dbf_sync(void *relm)
 
     r = (struct dd_rel_m *) relm;
 
-    f_wb(&r->f, 0, r->f.blk0);
+    b_fw(r->f.blk0);
 }
 
 void dd_sync()
@@ -467,6 +473,8 @@ void dd_add(char *rname)
 
     ll_add(&datadict, dd_relmget(rname)); 
 
+    b_clearfd(attribute.fd);
+    b_clearfd(relation.fd);
     f_close(&attribute);
     f_close(&relation);
 }

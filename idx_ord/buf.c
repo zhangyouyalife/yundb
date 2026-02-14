@@ -150,3 +150,20 @@ void b_fw(char *blk)
         CLR_DIRTY(b);
     }
 }
+
+void b_clearfd(int fd)
+{
+    int i;
+    struct buf *p;
+
+    for (i = 0; i < BUF_SZ; i++)
+    {
+        p = &buffer[i];
+        
+        if (p->fd == fd)
+        {
+            b_fw(B_BLK(p));
+            B_SET_EMPTY(p);
+        }
+    }
+}

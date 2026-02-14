@@ -20,7 +20,7 @@ struct dbf
 {
     int                  fd;
     struct dbf_hdr       *hdr;
-    char            blk0[BLK_SZ];   
+    char            *blk0;   
 };
 
 struct dbf_it
@@ -30,10 +30,6 @@ struct dbf_it
     int16_t r;
     char *blk;
 };
-
-void f_bs(struct dbf *f, int bn);
-void f_wb(struct dbf *f, int bn, char bd[BLK_SZ]);
-void f_rb(struct dbf *f, int bn, char bd[BLK_SZ]);
 
 void f_crt(struct dbf *f, char filename[], uint8_t type);
 void f_open(struct dbf *f, char filename[]);

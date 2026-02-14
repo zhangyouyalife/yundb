@@ -1,5 +1,8 @@
 defaut: createdb main
 
+clean:
+	rm createdb main *.o
+
 createdb: createdb.o db.o datadict.o file.o file_heap.o blk.o tuple.o data.o buf.o sysfile.o list.o
 
 main: main.o db.o datadict.o file.o file_heap.o blk.o tuple.o data.o buf.o sysfile.o list.o

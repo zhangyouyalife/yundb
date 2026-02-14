@@ -37,5 +37,6 @@ void b_fw(char *b);
 void b_init();
 void b_sync();
 void b_info();
+void b_clearfd(int fd);
 
 #endif

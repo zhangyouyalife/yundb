@@ -129,9 +129,11 @@ void ddl_create_go(struct ddl_create *c)
     /* create file */
     sprintf(tpath, "%s/%s.rel", db_path, c->name);
     f_crt(&f, tpath, FT_HEAP);
+    b_clearfd(f.fd);
     f_close(&f);
 
     /* add to datadict in memory */
+    /* TODO */
     b_sync();
     dd_sync();
 
@@ -244,6 +246,7 @@ void db_nr(struct dbf *f, char *r, int size)
     b_put(b);
 
     f->hdr->blks++;
+    SET_DIRTY(B_BUF(f->blk0));
 }
 
 

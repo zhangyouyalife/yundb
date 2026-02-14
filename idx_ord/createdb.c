@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "datadict.h"
+#include "buf.h"
 
 int main(int argc, char** argv)
 {
@@ -13,6 +14,11 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    b_init();
+
     dd_create(argv[1]);
+
+    b_sync();
+
     exit(0);
 }

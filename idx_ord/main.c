@@ -364,9 +364,9 @@ int main(int argc, char** argv)
 
     strcpy(db_path, argv[1]);
 
-    dd_init();
     b_init();
 
+    dd_init();
 
     while (1)
     {

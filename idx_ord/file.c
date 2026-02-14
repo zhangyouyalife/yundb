@@ -8,20 +8,6 @@
 #include "file_heap.h"
 #include "tuple.h"
 
-void f_bs(struct dbf *f, int bn)
-{
-    f_bs_heap(f, bn);
-}
-
-void f_wb(struct dbf *f, int bn, char bd[BLK_SZ])
-{
-    f_wb_heap(f, bn, bd);
-}
-
-void f_rb(struct dbf *f, int bn, char bd[BLK_SZ])
-{
-    f_rb_heap(f, bn, bd);
-}
 
 void f_crt(struct dbf *f, char filename[], uint8_t type)
 {

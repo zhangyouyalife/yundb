@@ -7,44 +7,7 @@
 #include "exitcode.h"
 #include "file_heap.h"
 #include "tuple.h"
-
-void f_bs_heap(struct dbf *f, int bn)
-{
-    if (-1 == lseek(f->fd, bn * BLK_SZ, SEEK_SET))
-    {
-        perror("f_bs lseek error");
-        exit(EC_IO);
-    }
-}
-
-void f_wb_heap(struct dbf *f, int bn, char bd[BLK_SZ])
-{
-    f_bs(f, bn);
-
-    if (BLK_SZ != write(f->fd, bd, BLK_SZ))
-    {
-        perror("f_wb write error");
-        exit(EC_IO);
-    }
-}
-
-void f_rb_heap(struct dbf *f, int bn, char bd[BLK_SZ])
-{
-    int r;
-    char *p;
-
-    f_bs(f, bn);
-
-    p = bd;
-    while ((r = read(f->fd, p, bd + BLK_SZ - p)) > 0)
-        p += r;
-
-    if (p - bd != BLK_SZ)
-    {
-        perror("f_rb read error");
-        exit(EC_IO);
-    }
-}
+#include "buf.h"
 
 void f_crt_heap(struct dbf *f, char filename[], uint8_t type)
 {
@@ -58,13 +21,16 @@ void f_crt_heap(struct dbf *f, char filename[], uint8_t type)
     }
 
     f->fd = fd;
-    bzero(f->blk0, BLK_SZ);
+    f->blk0 = b_get(fd, 0);
     f->hdr = (struct dbf_hdr *) f->blk0;
     h = (struct dbf_hdr_heap *) f->hdr;
     h->type = FT_HEAP;
     h->blks = 1;
     
-    f_wb(f, 0, f->blk0);
+    SET_DIRTY(B_BUF(f->blk0));
+    b_pin(f->blk0);
+
+    b_put(f->blk0);
 }
 
 void f_open_heap(struct dbf *f, char filename[])
@@ -78,15 +44,16 @@ void f_open_heap(struct dbf *f, char filename[])
     }
 
     f->fd = fd;
+    f->blk0 = b_get(fd, 0);
     f->hdr = (struct dbf_hdr *) f->blk0;
 
-    f_rb(f, 0, f->blk0);
+    b_pin(f->blk0);
+
+    b_put(f->blk0);
 }
 
 void f_close_heap(struct dbf *f)
 {
-    f_wb(f, 0, f->blk0);
-
     if ( -1 == close(f->fd))
     {
         perror("f_close close failed");
@@ -100,32 +67,34 @@ void f_nr_heap(struct dbf *f, char *r, int size)
     int i, tn;
     struct dbf_hdr_heap *h;
 
-    if ( (b = malloc(BLK_SZ)) == 0 )
-    {
-        perror("f_nr malloc failed");
-        exit(EC_M);
-    }
-
     h = (struct dbf_hdr_heap *) f->hdr;
     for (i = 1; i < h->blks; i++) {
-        f_rb(f, i, b);
+
+        b = b_get(f->fd, i);
+
         tn = blk_nt(b, size);
+
         if (tn != -1)
         {
             memcpy(b + BLK_GET(b, tn)->off , r, size);
-            f_wb(f, i, b);
+            SET_DIRTY(B_BUF(b));
+            b_put(b);
             return;
         }
+
+        b_put(b);
     }
 
     /* alloc new block */
+    b = b_get(f->fd, i);
     blk_init(b);
     tn = blk_nt(b, size);
     memcpy(b + BLK_GET(b, tn)->off , r, size);
-    f_wb(f, i, b);
-    h->blks++;
+    SET_DIRTY(B_BUF(b));
+    b_put(b);
 
-    free(b);
+    h->blks++;
+    SET_DIRTY(B_BUF(f->blk0));
 }
 
 void f_dr_heap(struct dbf_it *it)
@@ -133,7 +102,7 @@ void f_dr_heap(struct dbf_it *it)
 
     blk_dt(it->blk, it->r);
     
-    f_wb(it->f, it->b, it->blk);
+    SET_DIRTY(B_BUF(it->blk));
 }
 
 void f_it_heap(struct dbf *f, struct dbf_it *it)
@@ -183,7 +152,7 @@ char *f_itnext_heap(struct dbf_it *it)
 
         it->b = 1;
         it->r = -1;
-        f_rb(it->f, it->b, it->blk); 
+        sf_rb(it->f->fd, it->b, it->blk); 
     }
     h = (struct blk_hdr *) it->blk;
     it->r++;
@@ -196,7 +165,7 @@ char *f_itnext_heap(struct dbf_it *it)
     /* read next blocks */
     while (it->b + 1 < fh->blks)
     {
-        f_rb(it->f, ++(it->b), it->blk);
+        sf_rb(it->f->fd, ++(it->b), it->blk);
         it->r = 0;
         r = f_itnext_inblk(it);
         if (r != 0)
@@ -241,6 +210,6 @@ void f_ur_heap(struct dbf_it *it,  char *r, int newsz)
     h->tuples[it->r].off = newoff;
     h->tuples[it->r].sz = newsz;
     
-    f_wb(it->f, it->b, it->blk);
+    sf_wb(it->f->fd, it->b, it->blk);
 }
 

@@ -15,10 +15,6 @@ struct __attribute__((packed)) dbf_hdr_heap
     uint32_t    blks;
 };
 
-void f_bs_heap(struct dbf *f, int bn);
-void f_wb_heap(struct dbf *f, int bn, char bd[BLK_SZ]);
-void f_rb_heap(struct dbf *f, int bn, char bd[BLK_SZ]);
-
 void f_crt_heap(struct dbf *f, char filename[], uint8_t type);
 void f_open_heap(struct dbf *f, char filename[]);
 void f_close_heap(struct dbf *f);

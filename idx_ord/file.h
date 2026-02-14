@@ -7,16 +7,19 @@
 #include "tuple.h"
 #include "blk.h"
 
+#define FT_HEAP 1
+
 /* Database file header */ 
 struct __attribute__((packed)) dbf_hdr
 {
-    uint32_t    blks;
+    uint8_t type;
+    uint32_t blks;
 };
 
 struct dbf
 {
-    int             fd;
-    struct dbf_hdr  *hdr;
+    int                  fd;
+    struct dbf_hdr       *hdr;
     char            blk0[BLK_SZ];   
 };
 
@@ -31,7 +34,8 @@ struct dbf_it
 void f_bs(struct dbf *f, int bn);
 void f_wb(struct dbf *f, int bn, char bd[BLK_SZ]);
 void f_rb(struct dbf *f, int bn, char bd[BLK_SZ]);
-void f_crt(struct dbf *f, char filename[]);
+
+void f_crt(struct dbf *f, char filename[], uint8_t type);
 void f_open(struct dbf *f, char filename[]);
 void f_close(struct dbf *f);
 void f_nr(struct dbf *f, char *r, int size);

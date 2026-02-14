@@ -198,11 +198,11 @@ void dd_create(char *path)
 
     /* create relation.rel */
     sprintf(tpath, "%s/%s.rel", path, REL_NAME);
-    f_crt(&relation, tpath);
+    f_crt(&relation, tpath, FT_HEAP);
 
     /* create attribute */
     sprintf(tpath, "%s/%s.rel", path, ATTR_NAME);
-    f_crt(&attribute, tpath);
+    f_crt(&attribute, tpath, FT_HEAP);
 
     dd_crt_relation();
 

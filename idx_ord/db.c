@@ -128,7 +128,7 @@ void ddl_create_go(struct ddl_create *c)
 
     /* create file */
     sprintf(tpath, "%s/%s.rel", db_path, c->name);
-    f_crt(&f, tpath);
+    f_crt(&f, tpath, FT_HEAP);
     f_close(&f);
 
     /* add to datadict in memory */
@@ -219,7 +219,6 @@ void db_nr(struct dbf *f, char *r, int size)
 {
     char *b;
     int i, tn;
-
     for (i = 1; i < f->hdr->blks; i++) {
         b = b_get(f, i);
         tn = blk_nt(b, size);

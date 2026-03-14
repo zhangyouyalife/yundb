@@ -70,8 +70,10 @@ struct dql_tuple {
 struct dql_cursor {
     char *rname;
     struct dd_rel_m *r;
-    uint32_t    b;
-    int16_t    t;
+    struct dbf_it it;
+    char *b;
+
+    int t;
 };
 
 void dql_cursor_create(struct dql_cursor *cur, char *rname);

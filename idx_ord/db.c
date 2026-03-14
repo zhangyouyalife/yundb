@@ -128,7 +128,7 @@ void ddl_create_go(struct ddl_create *c)
 
     /* create file */
     sprintf(tpath, "%s/%s.rel", db_path, c->name);
-    f_crt(&f, tpath, FT_HEAP);
+    f_crt(&f, tpath, c->forg);
     b_clearfd(f.fd);
     f_close(&f);
 
@@ -221,14 +221,39 @@ void db_dr(struct dql_cursor *cur)
 {
     char *blk;
 
-    blk = b_get(cur->r->f.fd, cur->b);
+    blk = b_get(cur->r->f.fd, cur->it.b);
 
-    blk_dt(blk, cur->t);
+    blk_dt(blk, cur->it.r);
    
     SET_DIRTY(B_BUF(blk)); 
     b_put(blk);
 }
 
+static int cmp_ins(char *t1, char *t2)
+{
+    struct t_va *v1, *v2;
+    char *d1, *d2;
+    int i, res;
+
+    v1 = (struct t_va *)t1;
+    v2 = (struct t_va *)t2;
+
+    d1 = t1 + v1->off;
+    d2 = t2 + v1->off;
+
+    for (i = 0; i < v1->len && i < v2->len && d1[i] == d2[i]; i++) ;
+
+    if (i < v1->len && i < v2->len)
+    {
+        res = d1[i] - d2[i];
+    }
+    else
+    {
+        res = v1->len - v2->len;
+    }
+
+    return res;
+}
 
 int dml_insert(char *rname, union dml_value *values)
 {
@@ -242,7 +267,14 @@ int dml_insert(char *rname, union dml_value *values)
 
     dml_r(&r, values, &rel->desc);
 
-    f_nr(&rel->f, r.r, r.sz, 0);
+    if (strcmp("instructor", rname))
+    {
+        f_nr(&rel->f, r.r, r.sz, 0);
+    }
+    else
+    {
+        f_nr(&rel->f, r.r, r.sz, cmp_ins);
+    }
 
     dml_rfree(&r);
 
@@ -317,9 +349,9 @@ void dml_update_cur(struct dql_cursor *cur, union dml_value *values)
 
     dml_r(&rec, values, &cur->r->desc);
 
-    blk = b_get(cur->r->f.fd, cur->b);
+    blk = b_get(cur->r->f.fd, cur->it.b);
 
-    if (rec.sz - BLK_GET(blk, cur->t)->sz < blk_freespace(blk))
+    if (rec.sz - BLK_GET(blk, cur->it.r)->sz < blk_freespace(blk))
     {
         /* update in block */
         blk_ut(blk, cur->t, rec.r, rec.sz);
@@ -411,8 +443,8 @@ int dql_cursor_open(struct dql_cursor *cur)
     }
 
     cur->r = r;
-    cur->b = 1;
-    cur->t = -1;
+    cur->b = 0;
+    f_it(&r->f, &cur->it);
 
     return 0;
 }
@@ -446,46 +478,48 @@ int dql_cursor_fetch_inb(char *blk,
 
 int dql_cursor_fetch(struct dql_tuple *t, struct dql_cursor *cur)
 {
+    int ft, tsz;
+    struct blk_tuple *bt;
     char *blk;
 
-    while (cur->b < cur->r->f.hdr->blks)
+    ft = cur->it.f->hdr->type;
+    if (ft == FT_HEAP)
     {
-        blk = b_get(cur->r->f.fd, cur->b);
-
-        if (cur->t != -1)
-        {
-            b_unp(blk);
-        }
-
-        if (0 == dql_cursor_fetch_inb(blk, t, cur))
-        {
-            b_pin(blk);
-
-            b_put(blk);
-
-            return 0;
-        }
-
-        b_put(blk);
-
-        cur->b++;
-        cur->t = -1;
-      
+        tsz = sizeof(struct blk_tuple);
+    }
+    else if (ft == FT_ORDER)
+    {
+        tsz = sizeof(struct blk_tuple_node);
     }
 
-    return 1;
+    if (f_itnext(&cur->it))
+    {
+        blk = b_get(cur->it.f->fd, cur->it.b);
+
+        bt = blk_gt(blk, cur->it.r, tsz);
+
+        t->t = blk + bt->off;
+        t->desc = &cur->r->desc;
+
+        if (cur->b)
+            b_unp(cur->b);
+
+        cur->b = blk;
+        b_pin(cur->b);
+
+        b_put(blk);
+        return 0;
+    }
+    else
+    {
+        return 1;
+    }
 
 }
 
 void dql_cursor_close(struct dql_cursor *cur)
 {
-    char *blk;
-
-    if (cur->b < cur->r->f.hdr->blks && cur->t != -1)
-    {
-        blk = b_get(cur->r->f.fd, cur->b);
-        b_unp(blk);
-        b_put(blk);
-    }
+    if (cur->b)
+        b_unp(cur->b);
 }
 

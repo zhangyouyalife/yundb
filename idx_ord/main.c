@@ -26,7 +26,7 @@ void create_instructor_rel()
 {
     struct ddl_create c;
 
-    ddl_create_new(&c, "instructor", 4, FT_HEAP);
+    ddl_create_new(&c, "instructor", 4, FT_ORDER);
     ddl_create_attr(&c, "id", 0, DOMAIN_VARCHAR, 5);
     ddl_create_attr(&c, "name", 1, DOMAIN_VARCHAR, 20);
     ddl_create_attr(&c, "dept_name", 2, DOMAIN_VARCHAR, 20);

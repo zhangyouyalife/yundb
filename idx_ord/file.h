@@ -32,8 +32,8 @@ struct dbf_it
     struct dbf *f;
     uint16_t b;
     int16_t r;
-    char *blk;
 };
+
 
 void f_crt(struct dbf *f, char filename[], uint8_t type);
 void f_open(struct dbf *f, char filename[]);
@@ -42,9 +42,12 @@ void f_nr(struct dbf *f, char *r, int size);
 void f_dr(struct dbf_it *it);
 void f_ur(struct dbf_it *it, char *r, int size);
 
+char* f_gt(struct dbf_it *it);
+void f_ft(char *t);
+
 /* file iterator */
 void f_it(struct dbf *f, struct dbf_it *it);
-char *f_itnext(struct dbf_it *it);
+int f_itnext(struct dbf_it *it);
 void f_itfree(struct dbf_it *it);
 
 #endif

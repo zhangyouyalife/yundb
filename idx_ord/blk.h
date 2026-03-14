@@ -39,6 +39,8 @@ int blk_nt(char *blk, int size);
 void blk_dt(char *blk, int tn);
 void blk_ut(char *blk, int tn, char *t, int sz);
 
+struct blk_tuple *blk_gt(char *blk, int tn, int tsz);
+
 int blk_freespace(char *blk);
 
 #define BLK_GET(blk, tn)    (&((struct blk_hdr *) (blk))->tuples[tn])

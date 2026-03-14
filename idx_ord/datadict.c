@@ -68,7 +68,7 @@ void dd_attrdescfrom(struct dd_attrdesc *m, struct dd_attr *d)
 int dd_attrdesc_get(struct dd_attrdesc ads[], char *rname)
 {
     struct dbf_it it;
-    char *r;
+    char *r, *b;
     struct dd_attr *attr;
     static char nm[NAME_MAXSZ];
     int found;
@@ -76,16 +76,22 @@ int dd_attrdesc_get(struct dd_attrdesc ads[], char *rname)
     f_it(&attribute, &it);
 
     found = 0;
-    while ( (r = f_itnext(&it)) != 0 ) 
+    while (f_itnext(&it) != 0 ) 
     {
+        b = b_get(it.f->fd, it.b);
+
+        r = b + blk_gt(b, it.r, sizeof(struct blk_tuple))->off;
         attr = (struct dd_attr *) r;
         t_varchar(nm, &attr->rel, r);
+
+        b_put(b);
         /*printf("dd_attrdesc_get: %s\n", nm); */
         if (strcmp(nm, rname) == 0)
         {
             found++;
             dd_attrdescfrom(&ads[attr->pos], attr);
         }
+
     }
     
     f_itfree(&it);
@@ -96,7 +102,7 @@ int dd_attrdesc_get(struct dd_attrdesc ads[], char *rname)
 int dd_reldesc_get(struct dd_reldesc *rd, char *name)
 {
     struct dbf_it it;
-    char *r;
+    char *r, *b;
     struct dd_rel *rel;
     static char nb[NAME_MAXSZ];
     int found;
@@ -104,10 +110,17 @@ int dd_reldesc_get(struct dd_reldesc *rd, char *name)
     f_it(&relation, &it);
 
     found = 0;
-    while ( (r = f_itnext(&it)) != 0 ) 
+    while ( f_itnext(&it) != 0 ) 
     {
+        b = b_get(it.f->fd, it.b);
+
+        r = b + blk_gt(b, it.r, sizeof(struct blk_tuple))->off;
+
         rel = (struct dd_rel *) r;
         t_varchar(nb, &rel->name, r);
+
+        b_put(b);
+
         if (strcmp(nb, name) == 0)
         {
             dd_reldescfrom(rd, rel);
@@ -371,7 +384,7 @@ void dd_init()
     struct dbf_it it;
     char s[256];
     int i;
-    char *r;
+    char *r, *b;
     struct dd_rel_m *m;
     struct d_datum_h *ddh;
     struct d_datum_b ddb;
@@ -389,8 +402,12 @@ void dd_init()
 
     f_it(&relation, &it);
 
-    while ( (r = f_itnext(&it)) != 0)
+    while ( f_itnext(&it) != 0)
     {
+        b = b_get(it.f->fd, it.b);
+
+        r = b + blk_gt(b, it.r, sizeof(struct blk_tuple))->off;
+
         for (i = 0; i < rd.nattr; i++)
         {
             ad = &rd.attrs[i];
@@ -408,6 +425,8 @@ void dd_init()
                 d_hfree(ddh);
             }
         }
+
+        b_put(b);
     }
 
     f_itfree(&it);

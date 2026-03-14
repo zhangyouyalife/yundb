@@ -66,7 +66,7 @@ void f_it(struct dbf *f, struct dbf_it *it)
 }
 
 
-char *f_itnext(struct dbf_it *it)
+int f_itnext(struct dbf_it *it)
 {
     return f_itnext_heap(it);
 }

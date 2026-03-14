@@ -320,78 +320,24 @@ int f_nr_order(struct dbf *f, char *r, int size, int (*cmp)(char*, char*))
 
 void f_dr_order(struct dbf_it *it)
 {
+    char *b;
 
-    blk_dt(it->blk, it->r);
+    b = b_get(it->f->fd, it->b);
+
+    blk_dt(b, it->r);
     
-    SET_DIRTY(B_BUF(it->blk));
+    SET_DIRTY(B_BUF(b));
+    b_put(b);
 }
 
 void f_it_order(struct dbf *f, struct dbf_it *it)
 {
     it->f = f;
-    it->blk = 0;
 }
 
-static char * f_itnext_inblk(struct dbf_it *it)
-{
-    struct blk_tuple_node *r;
-    struct blk_hdr *h;
-
-    h = (struct blk_hdr *) it->blk;
-
-    for ( ; it->r < h->ntuple; it->r++)
-    {
-        r = (struct blk_tuple_node *)h->tuples + it->r;
-        if (r->tuple.sz != -1) {
-            return it->blk + r->tuple.off;
-        }
-    } 
-
-    return 0;
-}
 
 char *f_itnext_order(struct dbf_it *it)
 {
-    struct blk_hdr *h;
-    char *r;
-    struct dbf_hdr *fh;
-
-    fh = (struct dbf_hdr *)it->f->hdr;
-    if (it->blk == 0)
-    {
-        if (fh->blks <= 1)
-            /* no data block */
-            return 0;
-
-        /* init */
-        it->blk = malloc(BLK_SZ);
-        if (it->blk == 0)
-        {
-            perror("f_itnext malloc failed");
-            exit(EC_M);
-        }
-
-        it->b = 1;
-        it->r = -1;
-        sf_rb(it->f->fd, it->b, it->blk); 
-    }
-    h = (struct blk_hdr *) it->blk;
-    it->r++;
-
-    /* return record in curent block */
-    r = f_itnext_inblk(it);
-    if (r != 0)
-        return r;
-
-    /* read next blocks */
-    while (it->b + 1 < fh->blks)
-    {
-        sf_rb(it->f->fd, ++(it->b), it->blk);
-        it->r = 0;
-        r = f_itnext_inblk(it);
-        if (r != 0)
-            return r;
-    }
 
     /* no more record */
     return 0;
@@ -399,38 +345,9 @@ char *f_itnext_order(struct dbf_it *it)
 
 void f_itfree_order(struct dbf_it *it)
 {
-    free(it->blk);
 }
 
 void f_ur_order(struct dbf_it *it,  char *r, int newsz)
 {
-    struct blk_hdr *h;
-    struct blk_tuple *rec;
-    int off, sz, newoff;
-    int i;
-
-    h = (struct blk_hdr*) it->blk;
-    off = h->tuples[it->r].off;
-    sz = h->tuples[it->r].sz;
-    newoff = off + sz - newsz;
-
-    memmove(it->blk + h->free + sz - newsz, 
-            it->blk + h->free,
-            off - h->free);
-    memcpy(it->blk + newoff, r, newsz);
-
-    for (i = 0; i < h->ntuple; i++)
-    {
-       rec = &h->tuples[i]; 
-       if (rec->sz == -1)
-           continue;
-       if (rec->off < off)
-           rec->off += (sz - newsz);
-    }
-    h->free += (sz - newsz);
-    h->tuples[it->r].off = newoff;
-    h->tuples[it->r].sz = newsz;
-    
-    sf_wb(it->f->fd, it->b, it->blk);
 }
 

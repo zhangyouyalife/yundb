@@ -99,86 +99,63 @@ void f_nr_heap(struct dbf *f, char *r, int size)
 
 void f_dr_heap(struct dbf_it *it)
 {
+    char *b;
 
-    blk_dt(it->blk, it->r);
-    
-    SET_DIRTY(B_BUF(it->blk));
+    b = b_get(it->f->fd, it->b);
+
+    blk_dt(b, it->r);
+
+    SET_DIRTY(B_BUF(b));
+    b_put(b);
 }
 
 void f_it_heap(struct dbf *f, struct dbf_it *it)
 {
     it->f = f;
-    it->blk = 0;
+    it->b = 1;
+    it->r = -1;
 }
 
-static char * f_itnext_inblk(struct dbf_it *it)
+int f_itnext_heap(struct dbf_it *it)
 {
-    struct blk_tuple *r;
-    struct blk_hdr *h;
-
-    h = (struct blk_hdr *) it->blk;
-
-    for ( ; it->r < h->ntuple; it->r++)
-    {
-        r = &h->tuples[it->r];
-        if (r->sz != -1) {
-            return it->blk + h->tuples[it->r].off;
-        }
-    } 
-
-    return 0;
-}
-
-char *f_itnext_heap(struct dbf_it *it)
-{
-    struct blk_hdr *h;
-    char *r;
+    char *b;
     struct dbf_hdr_heap *fh;
+    struct blk_tuple *bt;
+    struct blk_hdr *bh;
+    int found;
 
     fh = (struct dbf_hdr_heap *)it->f->hdr;
-    if (it->blk == 0)
-    {
-        if (fh->blks <= 1)
-            /* no data block */
-            return 0;
 
-        /* init */
-        it->blk = malloc(BLK_SZ);
-        if (it->blk == 0)
+    found = 0;
+    while (!found && it->b < fh->blks)
+    {
+        b = b_get(it->f->fd, it->b);
+
+        bh = (struct blk_hdr*) b;
+        while (!found && ++(it->r) < bh->ntuple)
         {
-            perror("f_itnext malloc failed");
-            exit(EC_M);
+            bt = blk_gt(b, it->r, sizeof(struct blk_tuple));
+
+            if (bt && bt->off > 0) {
+                found = 1;
+            }
         }
 
-        it->b = 1;
-        it->r = -1;
-        sf_rb(it->f->fd, it->b, it->blk); 
-    }
-    h = (struct blk_hdr *) it->blk;
-    it->r++;
+        b_put(b);
 
-    /* return record in curent block */
-    r = f_itnext_inblk(it);
-    if (r != 0)
-        return r;
-
-    /* read next blocks */
-    while (it->b + 1 < fh->blks)
-    {
-        sf_rb(it->f->fd, ++(it->b), it->blk);
-        it->r = 0;
-        r = f_itnext_inblk(it);
-        if (r != 0)
-            return r;
+        if (!found)
+        {
+            it->b++;
+            it->r = -1;
+        }
     }
 
-    /* no more record */
-    return 0;
+    return found;
+
 }
 
 void f_itfree_heap(struct dbf_it *it)
 {
-    free(it->blk);
 }
 
 void f_ur_heap(struct dbf_it *it,  char *r, int newsz)
@@ -187,16 +164,19 @@ void f_ur_heap(struct dbf_it *it,  char *r, int newsz)
     struct blk_tuple *rec;
     int off, sz, newoff;
     int i;
+    char *b;
 
-    h = (struct blk_hdr*) it->blk;
+    b = b_get(it->f->fd, it->b);
+
+    h = (struct blk_hdr*) b;
     off = h->tuples[it->r].off;
     sz = h->tuples[it->r].sz;
     newoff = off + sz - newsz;
 
-    memmove(it->blk + h->free + sz - newsz, 
-            it->blk + h->free,
+    memmove(b + h->free + sz - newsz, 
+            b + h->free,
             off - h->free);
-    memcpy(it->blk + newoff, r, newsz);
+    memcpy(b + newoff, r, newsz);
 
     for (i = 0; i < h->ntuple; i++)
     {
@@ -210,6 +190,8 @@ void f_ur_heap(struct dbf_it *it,  char *r, int newsz)
     h->tuples[it->r].off = newoff;
     h->tuples[it->r].sz = newsz;
     
-    sf_wb(it->f->fd, it->b, it->blk);
+
+    SET_DIRTY(B_BUF(b));
+    b_put(b);
 }
 

@@ -15,6 +15,14 @@ struct __attribute__((packed)) dbf_hdr_heap
     uint32_t    blks;
 };
 
+struct dbf_it_heap
+{
+    struct dbf *f;
+    uint16_t bn;
+    int16_t tn;
+};
+
+
 void f_crt_heap(struct dbf *f, char filename[], uint8_t type);
 void f_open_heap(struct dbf *f, char filename[]);
 void f_close_heap(struct dbf *f);
@@ -24,7 +32,7 @@ void f_ur_heap(struct dbf_it *it, char *r, int size);
 
 /* file iterator */
 void f_it_heap(struct dbf *f, struct dbf_it *it);
-char *f_itnext_heap(struct dbf_it *it);
+int f_itnext_heap(struct dbf_it *it);
 void f_itfree_heap(struct dbf_it *it);
 
 #endif

@@ -106,6 +106,21 @@ void blk_ut(char *blk, int tn, char *newt, int newsz)
     h->tuples[tn].sz = newsz;
 }
 
+struct blk_tuple *blk_gt(char *blk, int tn, int tsz)
+{
+    struct blk_hdr *h;
+
+    h = (struct blk_hdr *) blk;
+    if (tn < h->ntuple)
+    {
+        return (struct blk_tuple *)(blk + sizeof(struct blk_hdr) + tsz * tn);
+    }
+    else
+    {
+        return 0;
+    }
+}
+
 int blk_freespace(char *blk)
 {
     int free;

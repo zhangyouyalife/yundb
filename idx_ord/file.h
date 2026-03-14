@@ -7,7 +7,11 @@
 #include "tuple.h"
 #include "blk.h"
 
-#define FT_HEAP 1
+#define INVALID_DATA_BLK    0
+#define INVALID_TUPLE_NO    (-1)
+
+#define FT_HEAP     1
+#define FT_ORDER    2
 
 /* Database file header */ 
 struct __attribute__((packed)) dbf_hdr

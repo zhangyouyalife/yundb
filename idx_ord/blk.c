@@ -4,6 +4,10 @@
 #include "conf.h"
 #include "blk.h"
 
+struct blk_tuple_ref NULL_TUPLE_REF = {
+    INVALID_DATA_BLK, INVALID_TUPLE_NO
+};
+
 void blk_init(char *blk)
 {
     struct blk_hdr *h;

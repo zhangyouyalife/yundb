@@ -1,13 +1,29 @@
 #ifndef _BLK_
 #define _BLK_
 
+#include "file.h"
+
 #include <stdint.h>
+
+struct __attribute__((packed)) blk_tuple_ref
+{
+    uint32_t bn;
+    uint16_t tn;
+};
+
+struct blk_tuple_ref NULL_TUPLE_REF;
 
 /* block record slot */
 struct __attribute__((packed)) blk_tuple
 {
     uint16_t    off;
     int16_t     sz;
+};
+
+struct __attribute__((packed)) blk_tuple_node
+{
+    struct blk_tuple tuple;
+    struct blk_tuple_ref next;
 };
 
 /* block header */

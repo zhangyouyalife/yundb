@@ -241,7 +241,7 @@ void dd_crt_attribute()
         exit(EC_M);
     }
     dd_rel(ATTR_NAME, 5, FO_HEAP, r); 
-    f_nr(&relation, r, DD_REL_RSZ(ATTR_NAME));
+    f_nr(&relation, r, DD_REL_RSZ(ATTR_NAME), 0);
     free(r);
 
     /* attribute records */
@@ -252,7 +252,7 @@ void dd_crt_attribute()
         exit(EC_M);
     }
     dd_attr(ATTR_NAME, "rel", DOMAIN_VARCHAR, 0, 256, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "rel"));
+    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "rel"), 0);
     free(r);
     /* attr: attribute.name */
     if ( (r = malloc(DD_ATTR_RSZ(ATTR_NAME, "name"))) == 0)
@@ -261,7 +261,7 @@ void dd_crt_attribute()
         exit(EC_M);
     }
     dd_attr(ATTR_NAME, "name", DOMAIN_VARCHAR, 1, 256, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "name"));
+    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "name"), 0);
     free(r);
 
     /* attr: relation.domain */
@@ -271,7 +271,7 @@ void dd_crt_attribute()
         exit(EC_M);
     }
     dd_attr(ATTR_NAME, "domain", DOMAIN_INTEGER, 2, 1, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "domain"));
+    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "domain"), 0);
     free(r);
 
     /* attr: relation.pos */
@@ -281,7 +281,7 @@ void dd_crt_attribute()
         exit(EC_M);
     }
     dd_attr(ATTR_NAME, "pos", DOMAIN_INTEGER, 3, 2, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "pos"));
+    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "pos"), 0);
     free(r);
 
     /* attr: relation.pos */
@@ -291,7 +291,7 @@ void dd_crt_attribute()
         exit(EC_M);
     }
     dd_attr(ATTR_NAME, "len", DOMAIN_INTEGER, 4, 2, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "len"));
+    f_nr(&attribute, r, DD_ATTR_RSZ(ATTR_NAME, "len"), 0);
     free(r);
 }
 
@@ -306,7 +306,7 @@ void dd_crt_relation()
         exit(EC_M);
     }
     dd_rel(REL_NAME, 3, FO_HEAP, r); 
-    f_nr(&relation, r, DD_REL_RSZ(REL_NAME));
+    f_nr(&relation, r, DD_REL_RSZ(REL_NAME), 0);
     free(r);
 
     /* attribute records */
@@ -317,7 +317,7 @@ void dd_crt_relation()
         exit(EC_M);
     }
     dd_attr(REL_NAME, "name", DOMAIN_VARCHAR, 0, 256, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(REL_NAME, "name"));
+    f_nr(&attribute, r, DD_ATTR_RSZ(REL_NAME, "name"), 0);
     free(r);
 
     /* attr: relation.nattr */
@@ -327,7 +327,7 @@ void dd_crt_relation()
         exit(EC_M);
     }
     dd_attr(REL_NAME, "nattr", DOMAIN_INTEGER, 1, 2, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(REL_NAME, "nattr"));
+    f_nr(&attribute, r, DD_ATTR_RSZ(REL_NAME, "nattr"), 0);
     free(r);
 
     /* attr: relation.forg */
@@ -337,7 +337,7 @@ void dd_crt_relation()
         exit(EC_M);
     }
     dd_attr(REL_NAME, "forg", DOMAIN_INTEGER, 2, 1, r);
-    f_nr(&attribute, r, DD_ATTR_RSZ(REL_NAME, "forg"));
+    f_nr(&attribute, r, DD_ATTR_RSZ(REL_NAME, "forg"), 0);
     free(r);
 }
 

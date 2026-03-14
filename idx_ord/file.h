@@ -38,7 +38,7 @@ struct dbf_it
 void f_crt(struct dbf *f, char filename[], uint8_t type);
 void f_open(struct dbf *f, char filename[]);
 void f_close(struct dbf *f);
-void f_nr(struct dbf *f, char *r, int size);
+void f_nr(struct dbf *f, char *r, int size, int (*cmp)(char *, char *));
 void f_dr(struct dbf_it *it);
 void f_ur(struct dbf_it *it, char *r, int size);
 

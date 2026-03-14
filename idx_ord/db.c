@@ -217,39 +217,6 @@ void dml_rfree(struct dml_rec *r)
     free(r->r);
 }
 
-void db_nr(struct dbf *f, char *r, int size)
-{
-    char *b;
-    int i, tn;
-    for (i = 1; i < f->hdr->blks; i++) {
-        b = b_get(f->fd, i);
-        tn = blk_nt(b, size);
-        if (tn != -1)
-        {
-            memcpy(b + BLK_GET(b, tn)->off, r, size);
-
-            SET_DIRTY(B_BUF(b));
-            b_put(b);
-
-            return;
-        }
-        b_put(b);
-    }
-
-    /* alloc new block */
-    b = b_get(f->fd, i);
-    blk_init(b);
-    tn = blk_nt(b, size);
-    memcpy(b + BLK_GET(b, tn)->off, r, size);
-
-    SET_DIRTY(B_BUF(b));
-    b_put(b);
-
-    f->hdr->blks++;
-    SET_DIRTY(B_BUF(f->blk0));
-}
-
-
 void db_dr(struct dql_cursor *cur)
 {
     char *blk;
@@ -275,7 +242,7 @@ int dml_insert(char *rname, union dml_value *values)
 
     dml_r(&r, values, &rel->desc);
 
-    db_nr(&rel->f, r.r, r.sz);
+    f_nr(&rel->f, r.r, r.sz, 0);
 
     dml_rfree(&r);
 
@@ -364,7 +331,7 @@ void dml_update_cur(struct dql_cursor *cur, union dml_value *values)
     {
         /* delete and insert */
         db_dr(cur);
-        db_nr(&cur->r->f, rec.r, rec.sz);
+        f_nr(&cur->r->f, rec.r, rec.sz, 0);
     }
 
     dml_rfree(&rec);

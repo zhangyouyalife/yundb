@@ -1,5 +1,5 @@
-#ifndef _FILE_HEAP_
-#define _FILE_HEAP_
+#ifndef _FILE_ORDER_
+#define _FILE_ORDER_
 
 #include <stdint.h>
 
@@ -26,7 +26,7 @@ void f_ur_heap(struct dbf_it *it, char *r, int size);
 
 /* file iterator */
 void f_it_order(struct dbf *f, struct dbf_it *it);
-char *f_itnext_order(struct dbf_it *it);
+int f_itnext_order(struct dbf_it *it);
 void f_itfree_order(struct dbf_it *it);
 
 #endif

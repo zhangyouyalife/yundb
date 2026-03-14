@@ -6,6 +6,7 @@
 
 #include "exitcode.h"
 #include "file_order.h"
+#include "blk.h"
 #include "tuple.h"
 #include "buf.h"
 
@@ -24,31 +25,12 @@ void f_crt_order(struct dbf *f, char filename[], uint8_t type)
     f->blk0 = b_get(fd, 0);
     f->hdr = (struct dbf_hdr *) f->blk0;
     h = (struct dbf_hdr_order *) f->hdr;
-    h->type = FT_HEAP;
+    h->type = FT_ORDER;
     h->blks = 1;
     h->overflow_blk = INVALID_DATA_BLK;
     memcpy(&h->first, &NULL_TUPLE_REF, sizeof(h->first));
     
     SET_DIRTY(B_BUF(f->blk0));
-    b_pin(f->blk0);
-
-    b_put(f->blk0);
-}
-
-void f_open_order(struct dbf *f, char filename[])
-{
-    int fd;
-
-    if ((fd = open(filename, O_RDWR)) < 0)
-    {
-        perror("f_open open failed");
-        exit(EC_IO);
-    }
-
-    f->fd = fd;
-    f->blk0 = b_get(fd, 0);
-    f->hdr = (struct dbf_hdr *) f->blk0;
-
     b_pin(f->blk0);
 
     b_put(f->blk0);
@@ -333,14 +315,38 @@ void f_dr_order(struct dbf_it *it)
 void f_it_order(struct dbf *f, struct dbf_it *it)
 {
     it->f = f;
+    it->b = INVALID_DATA_BLK;
+    it->r = INVALID_TUPLE_NO;
 }
 
 
-char *f_itnext_order(struct dbf_it *it)
+int f_itnext_order(struct dbf_it *it)
 {
+    struct dbf_hdr_order *h;
+    struct blk_tuple_node *n;
 
-    /* no more record */
-    return 0;
+    char *b;
+
+    h = (struct dbf_hdr_order *) it->f->hdr;
+
+    if (it->b == INVALID_DATA_BLK)
+    {
+        /* before first */
+        it->b = h->first.bn;
+        it->r = h->first.tn;
+    }
+    else
+    {
+        b = b_get(it->f->fd, it->b);
+        n = (struct blk_tuple_node *) blk_gt(b, it->r, sizeof(struct blk_tuple_node));
+
+        it->b = n->next.bn;
+        it->r = n->next.tn;
+
+        b_put(b);
+    }
+
+    return it->b != INVALID_DATA_BLK;
 }
 
 void f_itfree_order(struct dbf_it *it)

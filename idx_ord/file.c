@@ -9,6 +9,7 @@
 #include "file_order.h"
 #include "tuple.h"
 #include "buf.h"
+#include "block/block.h"
 
 void f_crt(struct dbf *f, char filename[], uint8_t type)
 {
@@ -19,7 +20,7 @@ void f_crt(struct dbf *f, char filename[], uint8_t type)
             f_crt_heap(f, filename, type);
             break;
         case FT_ORDER:
-            f_crt_order(f, filename, type);
+//            f_crt_order(f, filename, type);
             break;
         default:
             perror("f_crt: file type not supported");
@@ -39,7 +40,6 @@ static void f_open_generic(struct dbf *f, char filename[])
 
     f->fd = fd;
     f->blk0 = b_get(fd, 0);
-    f->hdr = (struct dbf_hdr *) f->blk0;
 
     b_pin(f->blk0);
 
@@ -53,13 +53,17 @@ void f_open(struct dbf *f, char filename[])
 
 void f_close(struct dbf *f)
 {
-    switch (f->hdr->type)
+    struct blk_header *h;
+
+    h = (struct blk_header *) f->blk0;
+
+    switch (h->type)
     {
-        case FT_HEAP:
+        case BT_HEAP_FILE_HEADER:
             f_close_heap(f);
             break;
         case FT_ORDER:
-            f_close_order(f);
+ //           f_close_order(f);
             break;
         default:
             perror("f_close: file type not supported");
@@ -70,13 +74,17 @@ void f_close(struct dbf *f)
 
 void f_nr(struct dbf *f, char *r, int size, int (*cmp)(char *, char*))
 {
-    switch (f->hdr->type)
+    struct blk_header *h;
+
+    h = (struct blk_header *) f->blk0;
+
+    switch (h->type)
     {
         case FT_HEAP:
             f_nr_heap(f, r, size);
             break;
         case FT_ORDER:
-            f_nr_order(f, r, size, cmp);
+  //          f_nr_order(f, r, size, cmp);
             break;
         default:
             perror("f_nr: file type not supported");
@@ -88,13 +96,14 @@ void f_nr(struct dbf *f, char *r, int size, int (*cmp)(char *, char*))
 
 void f_dr(struct dbf_it *it)
 {
-    switch (it->f->hdr->type)
+
+    switch (BLK_TYPE(it->f->blk0))
     {
         case FT_HEAP:
             f_dr_heap(it);
             break;
         case FT_ORDER:
-            f_dr_order(it);
+   //         f_dr_order(it);
             break;
         default:
             perror("f_dr: file type not supported");
@@ -105,13 +114,13 @@ void f_dr(struct dbf_it *it)
 
 void f_it(struct dbf *f, struct dbf_it *it)
 {
-    switch (f->hdr->type)
+    switch (BLK_TYPE(f->blk0))
     {
         case FT_HEAP:
             f_it_heap(f, it);
             break;
         case FT_ORDER:
-            f_it_order(f, it);
+    //        f_it_order(f, it);
             break;
         default:
             perror("f_it: file type not supported");
@@ -123,12 +132,12 @@ void f_it(struct dbf *f, struct dbf_it *it)
 
 int f_itnext(struct dbf_it *it)
 {
-    switch (it->f->hdr->type)
+    switch (BLK_TYPE(it->f->blk0))
     {
         case FT_HEAP:
             return f_itnext_heap(it);
         case FT_ORDER:
-            return f_itnext_order(it);
+     //       return f_itnext_order(it);
         default:
             perror("f_itnext: file type not supported");
             exit(EC_NOT_SUPPORTED);
@@ -138,13 +147,13 @@ int f_itnext(struct dbf_it *it)
 
 void f_itfree(struct dbf_it *it)
 {
-    switch (it->f->hdr->type)
+    switch (BLK_TYPE(it->f->blk0))
     {
         case FT_HEAP:
             f_itfree_heap(it);
             break;
         case FT_ORDER:
-            f_itfree_order(it);
+      //      f_itfree_order(it);
             break;
         default:
             perror("f_itfree: file type not supported");

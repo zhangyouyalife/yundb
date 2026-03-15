@@ -5,11 +5,11 @@
 
 #include "exitcode.h"
 #include "db.h"
-#include "blk.h"
 #include "file.h"
 #include "datadict.h"
 #include "data.h"
 #include "buf.h"
+#include "block/block.h"
 
 struct d_datum_h *db_attr_val(int pos, char *r, struct dd_reldesc *d)
 {
@@ -217,13 +217,14 @@ void dml_rfree(struct dml_rec *r)
     free(r->r);
 }
 
-void db_dr(struct dql_cursor *cur)
+void
+db_dr(struct dql_cursor *cur)
 {
     char *blk;
 
     blk = b_get(cur->r->f.fd, cur->it.b);
 
-    blk_dt(blk, cur->it.r);
+    blk_entry_delete(blk, cur->it.r);
    
     SET_DIRTY(B_BUF(blk)); 
     b_put(blk);
@@ -351,10 +352,10 @@ void dml_update_cur(struct dql_cursor *cur, union dml_value *values)
 
     blk = b_get(cur->r->f.fd, cur->it.b);
 
-    if (rec.sz - BLK_GET(blk, cur->it.r)->sz < blk_freespace(blk))
+    if (blk_entry_update(blk, cur->it.r, rec.sz) == 0)
     {
         /* update in block */
-        blk_ut(blk, cur->t, rec.r, rec.sz);
+        memcpy(blk_record(blk, cur->it.r), rec.r, rec.sz);
 
         SET_DIRTY(B_BUF(blk));
         b_put(blk);
@@ -449,56 +450,16 @@ int dql_cursor_open(struct dql_cursor *cur)
     return 0;
 }
 
-int dql_cursor_fetch_inb(char *blk,
-        struct dql_tuple *t, struct dql_cursor *cur)
-{
-    struct blk_hdr *bh;
-    struct blk_tuple *bt;
-
-    cur->t++;
-    bh = (struct blk_hdr *) blk;
-    while (cur->t < bh->ntuple)
-    {
-        bt = BLK_GET(blk, cur->t);
-        if (BLK_ISNONE(bt))
-        {
-            /* deleted */
-            cur->t++;
-            continue;
-        }
-        
-        t->t = blk + bt->off;
-        t->desc = &cur->r->desc;
-
-        return 0;
-    }
-
-    return 1;
-}
-
 int dql_cursor_fetch(struct dql_tuple *t, struct dql_cursor *cur)
 {
-    int ft, tsz;
-    struct blk_tuple *bt;
     char *blk;
-
-    ft = cur->it.f->hdr->type;
-    if (ft == FT_HEAP)
-    {
-        tsz = sizeof(struct blk_tuple);
-    }
-    else if (ft == FT_ORDER)
-    {
-        tsz = sizeof(struct blk_tuple_node);
-    }
 
     if (f_itnext(&cur->it))
     {
         blk = b_get(cur->it.f->fd, cur->it.b);
 
-        bt = blk_gt(blk, cur->it.r, tsz);
+        t->t = blk_record(blk, cur->it.r);
 
-        t->t = blk + bt->off;
         t->desc = &cur->r->desc;
 
         if (cur->b)

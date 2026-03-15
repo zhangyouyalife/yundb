@@ -1,17 +1,26 @@
+CFLAGS=-I.
+
 defaut: createdb main
 
 clean:
-	rm createdb main *.o
+	rm createdb main *.o block/*.o block/*.a
 
-createdb: createdb.o db.o datadict.o file.o file_heap.o file_order.o blk.o tuple.o data.o buf.o sysfile.o list.o
+createdb: createdb.o db.o datadict.o file.o file_heap.o block/block.a tuple.o data.o buf.o sysfile.o list.o
 
-main: main.o db.o datadict.o file.o file_heap.o file_order.o blk.o tuple.o data.o buf.o sysfile.o list.o
+main: main.o db.o datadict.o file.o file_heap.o block/block.a tuple.o data.o buf.o sysfile.o list.o
 
 data.o: data.c data.h
 
 tuple.o: tuple.c tuple.h
 
-blk.o: blk.c blk.h
+block/block.o: block/block.c block/block.h
+
+block/block_heap.o: block/block_heap.c block/block_heap.h
+
+block/block_seq.o: block/block_seq.c block/block_seq.h
+
+block/block.a: block/block.o block/block_heap.o block/block_seq.o
+	ar rcs block/block.a block/block.o block/block_heap.o block/block_seq.o
 
 file.o: file.c file.h conf.h
 

@@ -13,6 +13,7 @@
 #include "datadict.h"
 #include "data.h"
 #include "buf.h"
+#include "block/block.h"
 
 struct instructor
 {
@@ -26,7 +27,7 @@ void create_instructor_rel()
 {
     struct ddl_create c;
 
-    ddl_create_new(&c, "instructor", 4, FT_ORDER);
+    ddl_create_new(&c, "instructor", 4, FT_HEAP);
     ddl_create_attr(&c, "id", 0, DOMAIN_VARCHAR, 5);
     ddl_create_attr(&c, "name", 1, DOMAIN_VARCHAR, 20);
     ddl_create_attr(&c, "dept_name", 2, DOMAIN_VARCHAR, 20);
@@ -348,7 +349,8 @@ int cmd_exec(struct cmd *c)
     return 0;
 }
 
-int main(int argc, char** argv)
+int 
+main(int argc, char** argv)
 {
     int ch;
     int op;
@@ -363,6 +365,8 @@ int main(int argc, char** argv)
     }
 
     strcpy(db_path, argv[1]);
+
+    blk_types_init();
 
     b_init();
 

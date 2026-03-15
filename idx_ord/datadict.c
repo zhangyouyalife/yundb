@@ -10,6 +10,7 @@
 #include "tuple.h"
 #include "file.h"
 #include "buf.h"
+#include "block/block.h"
 
 static struct dbf  relation;
 
@@ -80,7 +81,7 @@ int dd_attrdesc_get(struct dd_attrdesc ads[], char *rname)
     {
         b = b_get(it.f->fd, it.b);
 
-        r = b + blk_gt(b, it.r, sizeof(struct blk_tuple))->off;
+        r = blk_record(b, it.r);
         attr = (struct dd_attr *) r;
         t_varchar(nm, &attr->rel, r);
 
@@ -114,7 +115,7 @@ int dd_reldesc_get(struct dd_reldesc *rd, char *name)
     {
         b = b_get(it.f->fd, it.b);
 
-        r = b + blk_gt(b, it.r, sizeof(struct blk_tuple))->off;
+        r = blk_record(b, it.r);
 
         rel = (struct dd_rel *) r;
         t_varchar(nb, &rel->name, r);
@@ -295,7 +296,8 @@ void dd_crt_attribute()
     free(r);
 }
 
-void dd_crt_relation()
+void
+dd_crt_relation()
 {
     char *r;
 
@@ -406,7 +408,7 @@ void dd_init()
     {
         b = b_get(it.f->fd, it.b);
 
-        r = b + blk_gt(b, it.r, sizeof(struct blk_tuple))->off;
+        r = blk_record(b, it.r);
 
         for (i = 0; i < rd.nattr; i++)
         {

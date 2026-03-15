@@ -5,8 +5,8 @@
 
 #include "conf.h"
 #include "tuple.h"
-#include "blk.h"
 #include "file.h"
+#include "block/block_seq.h"
 
 /* Database file header */ 
 struct __attribute__((packed)) dbf_hdr_order
@@ -14,7 +14,7 @@ struct __attribute__((packed)) dbf_hdr_order
     uint8_t     type;
     uint32_t    blks;
     uint32_t    overflow_blk;
-    struct blk_tuple_ref    first;
+    struct blk_record_ref    first;
 };
 
 void f_crt_order(struct dbf *f, char filename[], uint8_t type);

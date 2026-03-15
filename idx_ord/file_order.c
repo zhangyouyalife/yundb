@@ -6,7 +6,8 @@
 
 #include "exitcode.h"
 #include "file_order.h"
-#include "blk.h"
+#include "block/block.h"
+#include "block/block_seq.h"
 #include "tuple.h"
 #include "buf.h"
 
@@ -28,7 +29,8 @@ void f_crt_order(struct dbf *f, char filename[], uint8_t type)
     h->type = FT_ORDER;
     h->blks = 1;
     h->overflow_blk = INVALID_DATA_BLK;
-    memcpy(&h->first, &NULL_TUPLE_REF, sizeof(h->first));
+    h->first.bn = INVALID_DATA_BLK;
+    h->first.tn = INVALID_TUPLE_NO;
     
     SET_DIRTY(B_BUF(f->blk0));
     b_pin(f->blk0);

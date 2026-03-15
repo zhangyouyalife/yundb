@@ -5,15 +5,7 @@
 
 #include "conf.h"
 #include "tuple.h"
-#include "blk.h"
 #include "file.h"
-
-/* Database file header */ 
-struct __attribute__((packed)) dbf_hdr_heap
-{
-    uint8_t     type;
-    uint32_t    blks;
-};
 
 struct dbf_it_heap
 {

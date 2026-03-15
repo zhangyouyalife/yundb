@@ -167,15 +167,23 @@ void f_itfree_heap(struct dbf_it *it)
 
 void f_ur_heap(struct dbf_it *it,  char *r, int newsz)
 {
-    char *b;
+    char *blk;
 
-    b = b_get(it->f->fd, it->b);
+    blk = b_get(it->f->fd, it->b);
 
-    blk_entry_update(b, it->r, newsz);
+    if (blk_entry_update(blk, it->r, newsz) == 0)
+    {
+        /* update in block */
+        memcpy(blk_record(blk, it->r), r, newsz);
 
-    memcpy(blk_record(b, it->r), r, newsz);
-
-    SET_DIRTY(B_BUF(b));
-    b_put(b);
+        SET_DIRTY(B_BUF(blk));
+        b_put(blk);
+    }
+    else
+    {
+        /* delete and insert */
+        f_dr_heap(it);
+        f_nr_heap(it->f, r, newsz);
+    }
 }
 

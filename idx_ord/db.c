@@ -217,19 +217,6 @@ void dml_rfree(struct dml_rec *r)
     free(r->r);
 }
 
-void
-db_dr(struct dql_cursor *cur)
-{
-    char *blk;
-
-    blk = b_get(cur->r->f.fd, cur->it.b);
-
-    blk_entry_delete(blk, cur->it.r);
-   
-    SET_DIRTY(B_BUF(blk)); 
-    b_put(blk);
-}
-
 static int cmp_ins(char *t1, char *t2)
 {
     struct t_va *v1, *v2;
@@ -318,19 +305,19 @@ int dml_delete(char *rname, struct dml_where *w)
                 case DOMAIN_INTEGER:
                     if (w->v.i_val == v->v.i_val) 
                     {
-                        db_dr(&cur);
+                        f_dr(&cur.it);
                     }
                     break;
                 case DOMAIN_FLOAT:
                     if (w->v.f_val == v->v.f_val) 
                     {
-                        db_dr(&cur);
+                        f_dr(&cur.it);
                     }
                     break;
                 case DOMAIN_VARCHAR:
                     if (strcmp(w->v.v_val, v->v.v_val) == 0) 
                     {
-                        db_dr(&cur);
+                        f_dr(&cur.it);
                     }
                     break;
             }
@@ -350,22 +337,7 @@ void dml_update_cur(struct dql_cursor *cur, union dml_value *values)
 
     dml_r(&rec, values, &cur->r->desc);
 
-    blk = b_get(cur->r->f.fd, cur->it.b);
-
-    if (blk_entry_update(blk, cur->it.r, rec.sz) == 0)
-    {
-        /* update in block */
-        memcpy(blk_record(blk, cur->it.r), rec.r, rec.sz);
-
-        SET_DIRTY(B_BUF(blk));
-        b_put(blk);
-    }
-    else
-    {
-        /* delete and insert */
-        db_dr(cur);
-        f_nr(&cur->r->f, rec.r, rec.sz, 0);
-    }
+    f_ur(&cur->it, rec.r, rec.sz);
 
     dml_rfree(&rec);
 }

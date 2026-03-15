@@ -111,7 +111,7 @@ heap_file_data_blk_entry_update(char *blk, int n, int newsz)
 {
     struct blk_heap_file_data_header *h;
     struct blk_heap_file_data_entry *e, *p;
-    int diff, off, sz, newoff;
+    int diff, off, sz, newoff, vhdrend;
     int i;
 
     h = (struct blk_heap_file_data_header*) blk;
@@ -122,8 +122,13 @@ heap_file_data_blk_entry_update(char *blk, int n, int newsz)
     e = &h->entries[n];
     off = e->off;
     sz = e->sz;
-
     diff = sz - newsz;
+
+    vhdrend = sizeof(struct blk_heap_file_data_header) 
+        + sizeof(struct blk_heap_file_data_entry) * h->nentry;
+    if (h->free + diff  < vhdrend) 
+        return BLK_OPS_FAIL;
+
     newoff = off + diff;
 
     /* expand or shrink stroage */
